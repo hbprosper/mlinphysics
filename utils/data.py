@@ -63,10 +63,9 @@ class UniformSample(np.ndarray):
 # ---------------------------------------------------------------------------
 class Dataset(td.Dataset):
     
-    PINNSPLIT=(1, True, False)
-    
     def __init__(self, data, start, end,
-                 split_data=None, # cols, or (cols, requires_grad[, requires_grad])
+                 split_data=None,      # split data: [cols], [ncols-cols]
+                 requires_grad=False,  # if True and split_data specified, 
                  random_sample_size=None,
                  device=torch.device("cpu"),
                  verbose=1):
@@ -98,38 +97,22 @@ class Dataset(td.Dataset):
         if type(split_data) != type(None):
             
             self.split = True
-            
-            try:
-                cols, req_grad1, req_grad2 = split_data
-            except:
-                try:
-                    cols, req_grad1 = split_data
-                    req_grad2 = True
-                except:
-                    cols = split_data
-                    req_grad1 = True
-                    req_grad2 = True
-
-            # get data shape
-            if tdata.ndim < 2:
-                tdata = tdata.view(-1, 1)
-            
+            cols = split_data
+           
             x = tdata[:, :cols]
             y = tdata[:, cols:]
 
-            if req_grad1:
+            if requires_grad:
                 self.x = x.requires_grad_().to(device)
             else:
                 self.x = x.to(device)
+
+            self.y = y.to(device)
             
-            if req_grad2:
-                self.y = y.requires_grad_().to(device)
-            else:
-                self.y = y.to(device)
         else:
             self.split = False
             # do not split data
-            self.x = tdata.requires_grad_().to(device)
+            self.x = tdata.to(device)
 
         if verbose:
             print('Dataset')
@@ -155,11 +138,8 @@ class DataLoader:
     A data loader that is much faster than the default PyTorch DataLoader.
     
     Notes:
-    
-    1. If used, "sampler" must be a PyTorch sampler and the arguments
-       batch_size, shuffle, num_iterations are ignored.
-       
-    2. If num_iterations is specified, it is assumed that this is the
+           
+       If num_iterations is specified, it is assumed that this is the
        desired maximum number of iterations, maxiter, per for-loop. 
        The flag shuffle is automatically set to True and an internal 
        count, defined by shuffle_step = floor(len(dataset) / batch_size) 
@@ -182,21 +162,21 @@ class DataLoader:
                  debug=0,
                  shuffle=False):
 
-        # Note: sampler and (batch_size, shuffle, num_iterations) are 
-        # mutually exclusive
         self.dataset = dataset
-        self.size    = batch_size
+        self.batch_size = batch_size
         self.niterations = num_iterations
         self.verbose = verbose
         self.debug   = debug
         self.shuffle = shuffle
+
+        self.size = len(dataset)
         
-        # Not using a sampler, so need batch_size
-        if self.size == None:
+        # need batch_size
+        if self.batch_size == None:
             raise ValueError("you must specify a batch_size!")
             
         # If shuffle, then shuffle the dataset every shuffle_step iterations
-        self.shuffle_step = int(len(dataset) / self.size)
+        self.shuffle_step = int(len(dataset) / self.batch_size)
 
         if self.verbose:
             print('DataLoader')      
@@ -214,7 +194,7 @@ class DataLoader:
             if self.verbose:
                 print('  Maximum number of iterations has been specified')
                 
-        elif len(dataset) > self.size:
+        elif self.size > self.batch_size:
             self.maxiter = self.shuffle_step
             
         else:
@@ -225,7 +205,7 @@ class DataLoader:
 
         if self.verbose:
             print(f'  maxiter:      {self.maxiter:10d}')
-            print(f'  batch_size:   {self.size:10d}')
+            print(f'  batch_size:   {self.batch_size:10d}')
             print(f'  shuffle_step: {self.shuffle_step:10d}')
             print()
 
@@ -233,8 +213,13 @@ class DataLoader:
         
         # initialize iteration number
         # IMPORTANT: must start at -1 so that itnum goes from
-        # 0 to size - 1
+        # 0 to batch_size - 1
         self.itnum = -1
+
+        # initial indices for dataset (useful for debugging)
+        self.indices = torch.tensor(np.linspace(0, 
+                                                self.size-1,
+                                                self.size).astype(int))
 
     # Tell Python to make objects of type DataLoader iterable
     def __iter__(self):
@@ -243,7 +228,7 @@ class DataLoader:
     # This method implements and terminates iterations
     def __next__(self): 
 
-        # IMPORTANT: increment iteration number here!
+        # IMPORTANT: increment iteration number here, since we reset to itnum=-1
         self.itnum += 1
 
         if self.itnum < self.maxiter:
@@ -252,25 +237,24 @@ class DataLoader:
                 # Create a new tensor indexing dataset via a random
                 # sequence of indices
                 jtnum = self.itnum % self.shuffle_step
-                if jtnum == 0:
+                if self.itnum > 0 and (jtnum == 0):
+                    self.indices = torch.randperm(self.size)
                     if self.debug > 0:
-                        print(f'DataLoader/shuffling indices @ index {self.itnum}')
-      
-                    self.indices = torch.randperm(len(self.dataset))
-
-                start = jtnum * self.size
-                end = start + self.size
+                        print(f'DataLoader shuffled indices @ index {self.itnum}')
+                        
+                start = jtnum * self.batch_size
+                end = start + self.batch_size
                 indices = self.indices[start:end]
                 return self.dataset[indices]
                 
             else:
                 # Create a new tensor directly indexing dataset
-                start = self.itnum * self.size
-                end = start + self.size
+                start = self.itnum * self.batch_size
+                end = start + self.batch_size
                 return self.dataset[start:end]
         else:
             # Terminate iteration and reset iteration counter
-            # IMPORTANT: must start at -1 so that itnum goes from
+            # IMPORTANT: reset iteration number
             # 0 to size - 1
             self.itnum = -1
             raise StopIteration

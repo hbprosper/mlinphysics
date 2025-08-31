@@ -3,9 +3,10 @@
 # Real time monitoring of loss curves during training
 # Harrison B. Prosper
 # July 2021
+# Aug  2025 HBP use mlpinphysics
 #------------------------------------------------------------------------------
 import os, sys
-import lossmonitor as lm
+import mlpinphysics.utils.monitor as mon
 #------------------------------------------------------------------------------
 def main():
     # get name of loss file
@@ -14,21 +15,14 @@ def main():
     if argc < 1:
         sys.exit('''
         Usage:
-           ./monitor_losses.py loss-file [timeleft-file]
+           ./monitor_losses.py loss-file
     ''')
         
     loss_file = argv[0]
     print()
-    print('loss file:     ', loss_file)
-    
-    if argc > 1:
-        timeleft_file = argv[1]
-        print('timeleft file: ', timeleft_file)
-        print()
-    else:
-        timeleft_file = None
+    print('loss file:', loss_file)
 
-    monitor = lm.Monitor(loss_file, timeleft_file)
+    monitor = mon.Monitor(loss_file)
     
     monitor()
 #------------------------------------------------------------------------------

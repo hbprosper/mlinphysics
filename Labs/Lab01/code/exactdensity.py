@@ -6,7 +6,7 @@ class ExactDensity:
         self.rv1 = st.multivariate_normal(mean=[0.25, -0.25], 
                                           cov=[[0.20, 0.24], 
                                                [0.24, 0.40]])
-        
+
         self.rv2 = st.multivariate_normal(mean=[-0.10, 0.10], 
                                           cov=[[0.60, 0.40], 
                                                [0.40, 0.30]])
@@ -16,7 +16,7 @@ class ExactDensity:
         ystep = (ymax-ymin)/N
         x1, x2 = np.mgrid[xmin:xmax+xstep/2:xstep, ymin:ymax+ystep/2:ystep]
         return x1, x2
-        
+
     def __call__(self, x1, x2):
         # compute density at a grid of (x1, x2) points
         pos= np.dstack((x1, x2)) 

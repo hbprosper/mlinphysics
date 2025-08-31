@@ -18,6 +18,22 @@ import json
 # ----------------------------------------------------------------------------
 # Simple utilities
 # ----------------------------------------------------------------------------
+# Note: there are several average loss functions available 
+# in PyTorch, such as nn.CrossEntropyLoss(), but it's useful 
+# to know how to create your own.
+def average_quadratic_loss(f, y):
+    # f and t must be of the same shape
+    losses = (f - y)**2
+    return torch.mean(losses)
+
+def average_binary_cross_entropy_loss(f, y):
+    # f and t must be of the same shape
+    # Note: because of our use of the "where" function, the 
+    # precise values of the targets doesn't matter so long as for
+    # one class y < 0.5 and the other y > 0.5
+    losses = -torch.where(y > 0.5, torch.log(f), torch.log(1 - f))
+    return torch.mean(losses)
+        
 def number_of_parameters(model):
     '''
     Get number of trainable parameters in a model.
@@ -30,10 +46,10 @@ def number_of_parameters(model):
 # the batch size given when the loader is instantiated
 def compute_avg_loss(objective, loader):    
     assert(len(loader)==1)
+    objective.eval()
     for x, y in loader:
         # Detach from computation tree and send to CPU (if on a GPU)
         avg_loss = float(objective(x, y).detach().cpu())
-        
     return avg_loss
 
 def elapsed_time(now, start):
@@ -74,6 +90,30 @@ def get_steplr_scheduler(optimizer, config):
     
     # drop first entry of milestones list because it contains the base LR    
     return MultiStepLR(optimizer, milestones=milestones[1:], gamma=gamma)
+
+def plot_loss_curve(losses):
+    
+    xx, yy_t, yy_v = losses
+    
+    # create an empty figure
+    fig = plt.figure(figsize=(6, 3.8))
+    fig.tight_layout()
+    
+    # add a subplot to it
+    nrows, ncols, index = 1,1,1
+    ax  = fig.add_subplot(nrows,ncols,index)
+    
+    ax.plot(xx, yy_t, color='red',  lw=1, label='training loss')
+    ax.plot(xx, yy_v, color='blue', lw=1, label='validation loss')
+    ax.legend()
+    
+    ax.set_xlabel('iterations', fontsize=FONTSIZE)
+    ax.set_ylabel('average loss', fontsize=FONTSIZE)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.grid(True, which="both", linestyle='-')
+
+    plt.show()
 # ----------------------------------------------------------------------------
 # Classes 
 # ----------------------------------------------------------------------------
@@ -321,3 +361,42 @@ class Config:
     def __str__(self):
         # return a pretty printed string of the json object
         return str(json.dumps(self.cfg, indent=4))
+# ---------------------------------------------------------------------------
+class LRStepScheduler:
+    def __init__(self, optimizer, scheduler, verbose=True):
+        self.optimizer = optimizer
+        self.scheduler = scheduler
+        self.verbose   = verbose
+        self.curr_lr   = -1.0
+
+    def step(self):
+        self.scheduler.step()
+        
+    def lr(self):
+        lrate = self.optimizer.param_groups[0]['lr']
+        if lrate != self.curr_lr:
+            self.curr_lr = lrate
+            if self.verbose:
+                print()
+                print(f'\t\tlearning rate: {lrate:10.3e}')
+        return lrate
+# ---------------------------------------------------------------------------
+class Objective(nn.Module):
+
+    def __init__(self, model, avgloss):
+        super().__init__()
+        self.model = model
+        self.avgloss = avgloss
+        
+    def eval(self):
+        self.model.eval()
+
+    def train(self):
+        self.model.train()
+
+    def save(self, paramsfile):
+        self.model.save(paramsfile)
+    
+    def forward(self, x, y):
+        f = self.model(x)          # compute model output
+        return self.avgloss(f, y)  # compute average loss

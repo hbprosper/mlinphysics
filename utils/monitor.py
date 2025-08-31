@@ -3,7 +3,7 @@
 # Harrison B. Prosper
 # July 2021
 #------------------------------------------------------------------------------
-import os, sys
+import os, sys, re
 import numpy as np
 import pandas as pd
 import time
@@ -25,6 +25,8 @@ def get_losses(loss_file):
         return None
 
 def get_timeleft(timeleft_file):
+    if timeleft_file == None:
+        return None
     try:
         return open(timeleft_file, 'r').read().strip()
     except:
@@ -80,7 +82,7 @@ class TimeLeft:
         percent = 100 * count / self.N
 
         return "%10d|%6.2f%s|%2.2d:%2.2d:%2.2d/%2.2d:%2.2d:%2.2d|%6.1f it/s" % \
-            (count, percent, '%', hh, mm, ss, h, m, s, f)
+            (ii, percent, '%', hh, mm, ss, h, m, s, f)
         
     def __iter__(self):
         
@@ -108,7 +110,6 @@ class TimeLeft:
 
     def __str__(self):
         return self.a_str
-
 #--------------------------------------------------------------------
 class Monitor:
     '''    
@@ -116,9 +117,9 @@ class Monitor:
         :   :
     monitor()
     '''
-    def __init__(self, loss_file, timeleft_file):
+    def __init__(self, loss_file):
         self.loss_file = loss_file
-        self.timeleft_file = timeleft_file
+        self.timeleft_file = '.timeleft'
         
         # set up an empty figure
         self.fig = plt.figure(figsize=(6, 4))
@@ -128,37 +129,41 @@ class Monitor:
         nrows, ncols, index = 1,1,1
         self.ax  = self.fig.add_subplot(nrows, ncols, index)
         
-    def plot(self, frame):
+    def plot(self, frame=None):
         fig, ax = self.fig, self.ax
         
         ax.clear()
-        ax.set_xlabel('iteration', fontsize=16)
-        ax.set_ylabel('E[loss]', fontsize=16)
+        ax.set_xlabel('Iteration', fontsize=14)
+        ax.set_ylabel('$R(\\omega)$', fontsize=14)
         ax.grid(True, which="both", linestyle='-')
-        fig.tight_layout()
         
         data = get_losses(self.loss_file)
         
         if type(data) != type(None):
             
             iters, train_losses, valid_losses = data
+
+            ax.set_xlim(iters[0], iters[-1])
             
             if len(train_losses) > 0:
                 
                 if train_losses[0]/train_losses[-1] > LOG_SWITCH:
                     ax.set_yscale('log')
-        
+
                 timeleft = get_timeleft(self.timeleft_file)
                 if timeleft != None:
-                    ax.set_title(timeleft, fontsize=9)
+                    timeleft = timeleft.replace('|',' ').replace('%', 'p')
+                    ax.set_title(timeleft, fontsize=11)
                 else:
-                    ax.set_title('iteration: %5d | %s' % (iters[-1], time.ctime()))
+                    ax.set_title('Iteration: %5d|%s' % (iters[-1], time.ctime()))
                     
-                ax.plot(iters, train_losses, c='red',  label='training')
+                ax.plot(iters, train_losses, c='red',  linestyle='dashed', label='training')
                 ax.plot(iters, valid_losses, c='blue', label='validation')
                 
                 ax.legend()
-
+                
+        fig.tight_layout()
+        
     def __call__(self):        
         self.ani = FuncAnimation(fig=self.fig, 
                                  func=self.plot, 
@@ -166,7 +171,6 @@ class Monitor:
                                  repeat=False, 
                                  cache_frame_data=False)
         plt.show()
-
 #--------------------------------------------------------------------
 class LossWriter:
     '''
@@ -180,22 +184,22 @@ class LossWriter:
 
     def __init__(self, 
                  niterations, 
-                 lossfile, timeleftfile, 
+                 lossfile,  
                  step,
-                 frac=0.01,
                  delete=True,
+                 frac=0.015,
                  model=None, 
                  paramsfile=None):
       
         # cache inputs
         self.niterations = niterations
         self.lossfile = lossfile
-        self.timeleftfile = timeleftfile
         self.step = step
-        self.frac = frac
         self.delete = delete
+        self.frac = frac
         self.model = model
         self.paramsfile = paramsfile
+        self.timeleftfile = '.timeleft'
         
         # start saving model parameters after the 
         # following number of iterations.
@@ -229,13 +233,11 @@ class LossWriter:
         v_best_loss = self.min_avloss
         
         # update loss file
-
         open(self.lossfile, 
-             'a').write(f'{self.itno:12d},'
-                        f'{t_loss:10.3e},{v_loss:10.3e},{v_best_loss:10.3e}{lr:10.3e}\n')
+             'a').write(f'{self.itno:10d},'
+                        f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e}{lr:9.3e}\n')
 
         # if specified save model parameters
-        
         if type(self.model) != type(None):
             if loss_decreased:
                 if ii > self.start_saving:
@@ -245,11 +247,9 @@ class LossWriter:
                         pass
 
         # update time left file
-        
-        line = f'|{self.itno:12d}|{t_loss:10.3e}|{v_loss:10.3e}|'
+        line = f'|{self.itno:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'
         self.timeleft(ii, line)
         open(self.timeleftfile, 'w').write(f'{str(self.timeleft):s}\n')
 
         # update iteration number
-        
         self.itno += self.step
