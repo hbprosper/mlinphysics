@@ -199,13 +199,7 @@ class LossWriter:
         self.frac = frac
         self.model = model
         self.paramsfile = paramsfile
-        self.timeleftfile = '.timeleft'
-        
-        # start saving model parameters after the 
-        # following number of iterations.
-        
-        self.start_saving = niterations // 100
-        
+        self.timeleftfile = '.timeleft'       
         self.min_avloss   = float('inf')  # initialize minimum average loss
 
         if delete:
@@ -235,16 +229,15 @@ class LossWriter:
         # update loss file
         open(self.lossfile, 
              'a').write(f'{self.itno:10d},'
-                        f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e}{lr:9.3e}\n')
+                        f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e},{lr:9.3e}\n')
 
         # if specified save model parameters
         if type(self.model) != type(None):
             if loss_decreased:
-                if ii > self.start_saving:
-                    try:
-                        self.model.save(self.paramsfile)
-                    except:
-                        pass
+                try:
+                    self.model.save(self.paramsfile)
+                except:
+                    pass
 
         # update time left file
         line = f'|{self.itno:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'

@@ -42,6 +42,13 @@ def number_of_parameters(model):
                for param in model.parameters() 
                if param.requires_grad)
 
+def initialize_model(model, paramsfile):
+    # load parameters of neural network and set to eval mode
+    model.load_state_dict(torch.load(paramsfile, 
+                                     weights_only=True,
+                                     map_location=torch.device('cpu')))
+    model.eval()
+
 # This function assumes that the len(loader) is the same as
 # the batch size given when the loader is instantiated
 def compute_avg_loss(objective, loader):    
@@ -133,18 +140,24 @@ class FCNN(nn.Module):
                  n_inputs=2, 
                  n_hidden=4, 
                  n_width=32, 
-                 nonlinearity=Sin):
+                 f_hidden=Sin, 
+                 f_output=None):
         
         super().__init__()
         
         self.n_inputs = n_inputs
         self.n_hidden = n_hidden
         self.n_width  = n_width
+        self.f_hidden = f_hidden
+        self.f_output = f_output
         
-        cmd  = 'nn.Sequential(nn.Linear(n_inputs, n_width), nonlinearity(), '
-        cmd += ', '.join(['nn.Linear(n_width, n_width), nonlinearity()' 
+        cmd  = 'nn.Sequential(nn.Linear(n_inputs, n_width), f_hidden(), '
+        cmd += ', '.join(['nn.Linear(n_width, n_width), f_hidden()' 
                           for _ in range(n_hidden-1)])
-        cmd += ', nn.Linear(n_width, 1))'
+        if f_output:
+            cmd += ', nn.Linear(n_width, 1), f_output())'
+        else:
+            cmd += ', nn.Linear(n_width, 1))'
         cmd  = cmd.replace(', ,', ', ') # Hack!
         
         self.net = eval(cmd)

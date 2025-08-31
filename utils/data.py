@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------------------
 # Machine Learning in Physics Course at Florida State University.
-# This contains work developed with Claire David and Tlotlo Oepeng in the
-# contect PINN black hole project.
+# This contains work developed with Dr. Claire David and Tlotlo Oepeng in the
+# context of the AIMS PINN black hole project.
 #
 # Harrison B. Prosper
 # Created: Mon Aug 25 2025
@@ -261,3 +261,6 @@ class DataLoader:
 
     def __len__(self):
         return self.maxiter
+
+    def reset(self):
+        self.itnum = -1
