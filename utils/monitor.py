@@ -129,7 +129,7 @@ class Monitor:
         nrows, ncols, index = 1,1,1
         self.ax  = self.fig.add_subplot(nrows, ncols, index)
         
-    def plot(self, frame=None):
+    def plot(self, frame=None, logx=False):
         fig, ax = self.fig, self.ax
         
         ax.clear()
@@ -143,13 +143,16 @@ class Monitor:
             
             iters, train_losses, valid_losses = data
 
-            ax.set_xlim(iters[0], iters[-1])
+            #ax.set_xlim(iters[0], iters[-1])
             
             if len(train_losses) > 0:
                 
                 if train_losses[0]/train_losses[-1] > LOG_SWITCH:
                     ax.set_yscale('log')
-
+                    
+                if logx:
+                    ax.set_xscale('log')
+                    
                 timeleft = get_timeleft(self.timeleft_file)
                 if timeleft != None:
                     timeleft = timeleft.replace('|',' ').replace('%', 'p')
