@@ -14,7 +14,7 @@ import torch.utils.data as td
 from torch.optim.lr_scheduler import MultiStepLR
 
 import scipy.stats as st
-import json
+import yaml
 # ----------------------------------------------------------------------------
 # Simple utilities
 # ----------------------------------------------------------------------------
@@ -260,7 +260,7 @@ class Config:
     '''
         Manage simple ML application configuration
 
-          name:      name stub for all files, including the json file
+          name:      name stub for all files, including the yaml file
           batchsize: 
           niter:     number of iterations
           base_lr:   base learning rate
@@ -269,26 +269,31 @@ class Config:
           etc.
     '''
     def __init__(self, name, verbose=0):
+        import time
         '''
-        name:   name stub for all files, including the json file, or 
-                the name of a json file. A json file is identified 
-                by the extension .json
+        name:   name stub for all files, including the yaml file, or 
+                the name of a yaml file. A json file is identified 
+                by the extension .yaml
                 
-                    1. if name is a name stub, create a new json object.
+                    1. if name is a name stub, create a new yaml object.
                 
-                    2. if name is a json filename, create the json object
+                    2. if name is a yaml filename, create the yaml object
                        from the file.
         '''
-
-        # check if a json file has been specified
-        if name.endswith('.json'):
+        self.time = time.ctime()
+        
+        # check if a yaml file has been specified
+        if name.endswith('.yaml') or name.endswith('.yml'):
             self.cfg_filename = name # cache filename
             self.load(name)
         else:
-            # this not a json file specification, assume it is a name stub
-            # and build a json object
-            cfg = []
-            cfg.append(('name', name))
+            # this not a yaml file specification, assume it is a name stub
+            # and build a Python dictionary that specifies the structure of
+            # 
+            self.cfg = {}
+            cfg = self.cfg
+            
+            cfg['name'] = name
     
             # construct output file names    
             fcg = {}
@@ -296,17 +301,13 @@ class Config:
             fcg['params']     = f'{name}_params.pth'
             fcg['initparams'] = f'{name}_init_params.pth'
             
-            cfg.append(('file', fcg))
+            cfg['file'] = fcg
     
-            # create a default name for json configuration file
+            # create a default name for yaml configuration file
             # this name will be used if a filename is not
             # specified in the save method
-            self.cfg_filename = f'{name}_config.json'
+            self.cfg_filename = f'{name}_config.yaml'
     
-            # create partially filled json object
-            # the rest will be filled with calls to __call__(...)
-            self.cfg = dict(cfg)
-
         if verbose:
             print(self.__str__())
             
@@ -315,25 +316,25 @@ class Config:
         if not os.path.exists(filename):
             raise FileNotFoundError(f'{filename}')
         
-        # read json file and cache as Python dictionary
-        with open(filename, mode="r", encoding="utf-8") as file:
-            self.cfg = json.load(file)
+        # read yaml file and cache as Python dictionary
+        with open(filename, mode="r") as file:
+            self.cfg = yaml.safe_load(file)
 
     def save(self, filename=None):
         # if no filename specified use default filename
         if filename == None:
             filename = self.cfg_filename
 
-        # require .json extension
-        if not filename.endswith('.json'):
-            raise NameError('the output file must have extension .json')
+        # require .yaml extension
+        if not (filename.endswith('.yaml') or filename.endswith('.yml')):
+            raise NameError('the output file must have extension .yaml')
             
-        # save to JSON file
+        # save to yaml file
         open(filename, 'w').write(self.__str__())
         
     def __call__(self, key, value=None):
         # this method can be used to fill out the rest
-        # of the json object
+        # of the Python dictionary
         keys = key.split('/')
         
         # if key exists, return its value
@@ -351,7 +352,7 @@ class Config:
                     value = val
                     break
             else:
-                # key is not in json object, so add it to json file
+                # key is not in dictionary object, so add it
                 if value == None:
                     # no value specified, so we can't add this key
                     raise KeyError(f'key "{lkey}" not found')
@@ -372,8 +373,13 @@ class Config:
         return value
 
     def __str__(self):
-        # return a pretty printed string of the json object
-        return str(json.dumps(self.cfg, indent=4))
+        # return a pretty printed string of the yaml object (help from ChatGPT)
+        return str(yaml.dump(
+            self.cfg,                 
+            sort_keys=False,           # keep key order
+            default_flow_style=False,  # use block style 
+            indent=1,                  # indentation level
+            allow_unicode=True))
 # ---------------------------------------------------------------------------
 class LRStepScheduler:
     def __init__(self, optimizer, scheduler, verbose=True):
