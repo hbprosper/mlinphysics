@@ -1,0 +1,14 @@
+name: gauss2d
+file:
+  losses: gauss2d_losses.csv
+  params: gauss2d_params.pth
+  initparams: gauss2d_init_params.pth
+train_size: 80000
+test_size: 17000
+val_size: 3000
+batch_size: 128
+monitor_step: 10
+n_steps: 1
+n_iters_per_step: 50000
+base_lr: 0.0001
+gamma: 0.5
