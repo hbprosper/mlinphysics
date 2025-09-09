@@ -64,6 +64,7 @@ class UniformSample(np.ndarray):
 class Dataset(td.Dataset):
     
     def __init__(self, data, start, end,
+                 targets=None,         # can specify targets explicitly
                  split_data=None,      # split data: [cols], [ncols-cols]
                  requires_grad=False,  # if True and split_data specified, 
                  random_sample_size=None,
@@ -72,17 +73,17 @@ class Dataset(td.Dataset):
         
         super().__init__()
 
-        self.verbose = verbose
-
-        # # Check that we have the right data types
-        # if not isinstance(data, (SobolSample, UniformSample)):
-        #     raise TypeError('''
-        #     The object at argument 1 must be an instance of SobolSample
-        #     or UniformSample
-        #     ''')
-
+        self.verbose  = verbose
+        targets_given = type(targets) != type(None)
+        split         = type(split_data) != type(None)
+        
         if random_sample_size == None:
-            tdata = torch.Tensor(data[start:end])
+            x = torch.Tensor(data[start:end])
+            if targets_given:
+                if targets.dtype == int:
+                    y = torch.tensor(targets[start:end])
+                else:
+                    y = torch.Tensor(targets[start:end])
         else:
             # create a random sample from items in the specified range (start, end)
             assert(type(random_sample_size) == type(0))
@@ -91,28 +92,34 @@ class Dataset(td.Dataset):
             assert(length > 0)
             
             indices = torch.randint(0, length-1, size=(random_sample_size,))
-            tdata   = torch.Tensor(data[indices])
+            x   = torch.Tensor(data[indices])
+            if targets_given:
+                if targets.dtype == int:
+                    y = torch.tensor(targets[indices])
+                else:
+                    y = torch.Tensor(targets[indices])
 
-        # check whether to split data
-        if type(split_data) != type(None):
-            
+        if split or targets_given:
+
             self.split = True
-            cols = split_data
-           
-            x = tdata[:, :cols]
-            y = tdata[:, cols:]
 
+            if split:
+                cols = split_data
+                y = x[:, cols:]           
+                x = x[:, :cols]
+                
             if requires_grad:
                 self.x = x.requires_grad_().to(device)
             else:
                 self.x = x.to(device)
 
             self.y = y.to(device)
-            
+
         else:
+            # neither targets nor split specified
             self.split = False
             # do not split data
-            self.x = tdata.to(device)
+            self.x = x.to(device)
 
         if verbose:
             print('Dataset')
