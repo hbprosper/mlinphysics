@@ -3,10 +3,10 @@
 # Real time monitoring of loss curves during training
 # Harrison B. Prosper
 # July 2021
-# Aug  2025 HBP use mlpinphysics
+# Aug  2025 HBP use mlinphysics
 #------------------------------------------------------------------------------
 import os, sys
-import mlpinphysics.utils.monitor as mon
+import mlinphysics.utils.monitor as mon
 #------------------------------------------------------------------------------
 def main():
     # get name of loss file
