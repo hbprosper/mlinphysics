@@ -129,7 +129,7 @@ class Monitor:
         nrows, ncols, index = 1,1,1
         self.ax  = self.fig.add_subplot(nrows, ncols, index)
         
-    def plot(self, frame=None, logx=False):
+    def plot(self, frame=None, logx=True):
         fig, ax = self.fig, self.ax
         
         ax.clear()
@@ -190,7 +190,7 @@ class LossWriter:
                  lossfile,  
                  step,
                  delete=True,
-                 frac=0.015,
+                 frac=0.005,
                  model=None, 
                  paramsfile=None):
       
@@ -237,10 +237,7 @@ class LossWriter:
         # if specified save model parameters
         if type(self.model) != type(None):
             if loss_decreased:
-                try:
-                    self.model.save(self.paramsfile)
-                except:
-                    pass
+                self.model.save(self.paramsfile)
 
         # update time left file
         line = f'|{self.itno:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'

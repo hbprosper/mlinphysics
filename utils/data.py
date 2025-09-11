@@ -269,5 +269,9 @@ class DataLoader:
     def __len__(self):
         return self.maxiter
 
+    def __call__(self, itnum=0):
+        self.itnum = itnum-1
+        return next(self)
+        
     def reset(self):
         self.itnum = -1

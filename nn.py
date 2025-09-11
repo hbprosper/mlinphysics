@@ -124,6 +124,34 @@ def plot_loss_curve(losses):
 # ----------------------------------------------------------------------------
 # Classes 
 # ----------------------------------------------------------------------------
+class Model(nn.Module):
+    
+    def __init__(self): 
+        super().__init__()
+        self.net = None
+        
+    def save(self, paramsfile):
+        # save parameters of neural network
+        torch.save(self.state_dict(), paramsfile)
+    
+    def load(self, paramsfile):
+        # load parameters of neural network and set to eval mode
+        self.load_state_dict(torch.load(paramsfile, 
+                                        weights_only=True,
+                                        map_location=torch.device('cpu')))
+        self.eval()
+            
+    def forward(self, x, p=None):        
+        if type(p) != type(None):
+            p = p.repeat(len(x), 1) if p.ndim < 2 else p
+            x = torch.concat((x, p), dim=-1)
+            
+        if self.net == None:
+            raise ValueError('self.net not defined. Please do so in constructor!')
+            
+        y = self.net(x)   
+        return y
+        
 class Sin(nn.Module):
     def __init__(self):
         super().__init__()
@@ -131,7 +159,7 @@ class Sin(nn.Module):
     def forward(self, x):
         return torch.sin(x)
         
-class FCNN(nn.Module):
+class FCNN(Model):
     '''
     Model a fully-connected neural network (FCNN).
     '''
@@ -162,26 +190,26 @@ class FCNN(nn.Module):
         
         self.net = eval(cmd)
 
-    def save(self, dictfile):
-        # save parameters of neural network
-        torch.save(self.state_dict(), dictfile)
+    # def save(self, dictfile):
+    #     # save parameters of neural network
+    #     torch.save(self.state_dict(), dictfile)
 
-    def load(self, dictfile):
-        # load parameters of neural network and set to eval mode
-        self.load_state_dict(torch.load(dictfile, 
-                                        weights_only=True,
-                                        map_location=torch.device('cpu')))
-        self.eval()
+    # def load(self, dictfile):
+    #     # load parameters of neural network and set to eval mode
+    #     self.load_state_dict(torch.load(dictfile, 
+    #                                     weights_only=True,
+    #                                     map_location=torch.device('cpu')))
+    #     self.eval()
 
-    def forward(self, x, p=None):
-        assert(x.ndim==2)
+    # def forward(self, x, p=None):
+    #     assert(x.ndim==2)
         
-        if type(p) != type(None):
-            p = p.repeat(len(x), 1) if p.ndim < 2 else p
-            x = torch.concat((x, p), dim=-1)
+    #     if type(p) != type(None):
+    #         p = p.repeat(len(x), 1) if p.ndim < 2 else p
+    #         x = torch.concat((x, p), dim=-1)
 
-        y = self.net(x)   
-        return y
+    #     y = self.net(x)   
+    #     return y
 # ----------------------------------------------------------------------------
 # Extreme learning machine
 # experimental
@@ -333,26 +361,50 @@ class Config:
         open(filename, 'w').write(self.__str__())
         
     def __call__(self, key, value=None):
+        '''
+        Return the value of the specified key.
+
+        Notes
+        -----
+        1. If the key is in the dictionary and value is specified then 
+        update the value of the key and return the value, otherwise 
+        return the existing value of the key.
+
+        2. If the key is not in the dictionary add it to the dictionary with
+        the specified value and return the value. If no value is given raise 
+        a KeyError exception.
+        '''
         # this method can be used to fill out the rest
         # of the Python dictionary
         keys = key.split('/')
         
-        # if key exists, return its value
+        # if key exists and value !=None update the value
+        # else return its value
         cfg = self.cfg
         
         for ii, lkey in enumerate(keys):
             depth = ii + 1
             
             if lkey in cfg:
+                # key is in dictionary
+                
                 val = cfg[lkey]
                 if depth < len(keys):
                     # recursion
                     cfg = val
                 else:
-                    value = val
+                    if type(value) == type(None):
+                        # key exists and no value has been specified
+                        # so return existing value
+                        value = val
+                    else:
+                        # key exists and a value has been specified
+                        # so update key and return new value
+                        cfg[key] = value # update value
                     break
             else:
                 # key is not in dictionary object, so add it
+                
                 if value == None:
                     # no value specified, so we can't add this key
                     raise KeyError(f'key "{lkey}" not found')
