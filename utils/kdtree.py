@@ -159,3 +159,9 @@ class KDTree:
 
     def get_leaves(self): 
         return self.leaves
+
+    def number_of_leaves():
+        return self.__len__()
+        
+    def __len__(self):
+        return len(self.leaves)
