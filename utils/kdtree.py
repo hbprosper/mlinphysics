@@ -66,12 +66,14 @@ class KDTree:
                               exactly = leaf_count.
     '''
     
-    def __init__(self, points, leaf_size=1):
+    def __init__(self, points, leaf_size=1, store_nodeinfo=False):
 
         # sample size (number of points)
         self.size = len(points)
 
         self.leaf_size = leaf_size
+
+        self.store_nodeinfo = store_nodeinfo
         
         # find lower bounds in all m dimensions
         mins = np.min(points, axis=0)
@@ -82,6 +84,9 @@ class KDTree:
         # cache leaves in a list
         self.leaves = []
 
+        # cache nodes (mostly for debugging)
+        self.nodeinfo = []
+        
         # build tree recursively
         self.node = self._build(points, bounds=(mins, maxs), depth=0)
 
@@ -118,7 +123,7 @@ class KDTree:
 
             # cache leaf in a list
             self.leaves.append(leaf)
-            
+                        
             return leaf
             
         # ...otherwise split current node at median point along current axis
@@ -129,6 +134,9 @@ class KDTree:
         # create bounds for children
         mins, maxs = bounds
 
+        if self.store_nodeinfo:
+            self.nodeinfo.append((depth, axis, np.array(bounds).T, split_point))
+        
         # the split point along current axis is the upper bound for the left node
         left_maxs = maxs.copy() # initialize with the current upper bounds...
         left_maxs[axis] = split_point[axis] # ...and update the upper bound for current axis
@@ -160,6 +168,12 @@ class KDTree:
     def get_leaves(self): 
         return self.leaves
 
+    def get_nodeinfo(self):
+        I = [(self.nodeinfo[i][0], i) for i in range(len(self.nodeinfo))]
+        I.sort()
+        depth, index = list(zip(*I))
+        return np.array(depth), np.array(index)
+        
     def number_of_leaves():
         return self.__len__()
         
