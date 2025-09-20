@@ -151,7 +151,8 @@ class Monitor:
                     ax.set_yscale('log')
                     
                 if logx:
-                    ax.set_xscale('log')
+                    if iters > 500:
+                        ax.set_xscale('log')
                     
                 timeleft = get_timeleft(self.timeleft_file)
                 if timeleft != None:
