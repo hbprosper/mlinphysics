@@ -68,7 +68,7 @@ class Dataset(td.Dataset):
                  split_data=None,      # split data: [cols], [ncols-cols]
                  requires_grad=False,  # if True and split_data specified, 
                  random_sample_size=None,
-                 device=torch.device("cpu"),
+                 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
                  verbose=1):
         
         super().__init__()
