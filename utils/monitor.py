@@ -223,7 +223,7 @@ class LossWriter:
 
         self.timeleft = TimeLeft(niterations)
         
-    def __call__(self, ii, t_loss, v_loss, lr=0):
+    def __call__(self, ii, t_loss, v_loss, lr=0, epoch=None):
 
         loss_decreased = v_loss < (1 - self.frac) * self.min_avloss
         if loss_decreased:
@@ -241,7 +241,10 @@ class LossWriter:
                 self.model.save(self.paramsfile)
 
         # update time left file
-        line = f'|{self.itno:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'
+        if epoch != None:
+            line = f'|{epoch:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'
+        else:
+            line = f'|{self.itno:10d}|{t_loss:9.3e}|{v_loss:9.3e}|'
         self.timeleft(ii, line)
         open(self.timeleftfile, 'w').write(f'{str(self.timeleft):s}\n')
 

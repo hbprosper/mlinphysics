@@ -51,12 +51,10 @@ def initialize_model(model, paramsfile):
 
 # This function assumes that the len(loader) is the same as
 # the batch size given when the loader is instantiated
-def compute_avg_loss(objective, loader):    
-    assert(len(loader)==1)
-    objective.eval()
-    for x, y in loader:
-        # Detach from computation tree and send to CPU (if on a GPU)
-        avg_loss = float(objective(x, y).detach().cpu())
+def compute_avg_loss(objective, loader):
+    with torch.no_grad():
+        objective.eval()
+        avg_loss = sum([float(objective(x, y).cpu()) for x, y in loader]) / len(loader)
     return avg_loss
 
 def elapsed_time(now, start):
@@ -469,5 +467,5 @@ class Objective(nn.Module):
         self.model.save(paramsfile)
     
     def forward(self, x, y):
-        f = self.model(x)          # compute model output
-        return self.avgloss(f, y)  # compute average loss
+        f = self.model(x)
+        return self.avgloss(f, y) 

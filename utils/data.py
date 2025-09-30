@@ -57,29 +57,45 @@ class UniformSample(np.ndarray):
         # Cast the numpy array to the type UniformSample
         sample = np.asarray(sample).view(cls)
         return sample
+
 # ---------------------------------------------------------------------------
 # Custom Dataset that takes (N, D) array of N points in the unit D-cube,
 # Taken from AIMS PINN project
 # ---------------------------------------------------------------------------
 class Dataset(td.Dataset):
-    
+
     def __init__(self, data, start, end,
                  targets=None,         # can specify targets explicitly
-                 split_data=None,      # split data: [cols], [ncols-cols]
-                 requires_grad=False,  # if True and split_data specified, 
+                 split_at=None,        # split data: [cols], [ncols-cols]
+                 requires_grad=False,  # if True and split_data specified,
                  random_sample_size=None,
                  device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
                  verbose=1):
-        
+
         super().__init__()
 
         self.verbose  = verbose
-        targets_given = type(targets) != type(None)
-        split         = type(split_data) != type(None)
-        
+        self.device   = device
+        has_targets   = type(targets) != type(None)
+        split_data    = type(split_at) != type(None)
+
+        # store_as_tensor will be false if data is a list of tensors
+        try:
+            tmp = torch.Tensor(data[start:end])
+            self.store_as_tensor = True
+        except:
+            self.store_as_tensor = False
+
+        y = None
         if random_sample_size == None:
-            x = torch.Tensor(data[start:end])
-            if targets_given:
+
+            if self.store_as_tensor:
+                x = torch.Tensor(data[start:end])
+            else:
+                # assume we have a list of possibly inhomogeneous tensors
+                x = data[start:end]
+
+            if has_targets:
                 if targets.dtype == int:
                     y = torch.tensor(targets[start:end])
                 else:
@@ -87,53 +103,75 @@ class Dataset(td.Dataset):
         else:
             # create a random sample from items in the specified range (start, end)
             assert(type(random_sample_size) == type(0))
-            
+
             length  = end - start
             assert(length > 0)
-            
+
             indices = torch.randint(0, length-1, size=(random_sample_size,))
-            x   = torch.Tensor(data[indices])
-            if targets_given:
+            if self.store_as_tensor:
+                x = torch.Tensor(data[indices])
+            else:
+                # assume we have a list of possibly inhomogeous tensors
+                x = [data[i] for i in indices]
+
+            if has_targets:
                 if targets.dtype == int:
                     y = torch.tensor(targets[indices])
                 else:
                     y = torch.Tensor(targets[indices])
 
-        if split or targets_given:
+        # perhaps we should split?
+        if split_data:
+            has_targets = True # important!
+            cols = split_at
+            y = x[:, cols:]
+            x = x[:, :cols]
 
-            self.split = True
-
-            if split:
-                cols = split_data
-                y = x[:, cols:]           
-                x = x[:, :cols]
-                
-            if requires_grad:
-                self.x = x.requires_grad_().to(device)
+        if requires_grad:
+            if self.store_as_tensor:
+                x = x.requires_grad_().to(device)
             else:
-                self.x = x.to(device)
+                # assume we have a list of tensors
+                x = [d.requires_grad_().to(device) for d in x]
 
-            self.y = y.to(device)
+        # cache, needed later
+        self.has_targets = has_targets
 
-        else:
-            # neither targets nor split specified
-            self.split = False
-            # do not split data
+        # cache data
+        if self.store_as_tensor:
             self.x = x.to(device)
+        else:
+            self.x = [d.to(device) for d in x]
+
+        # assume y is a tensor
+        if self.has_targets:
+            self.y = y.to(device)
 
         if verbose:
             print('Dataset')
-            print(f"  shape of x: {self.x.shape}")
-            if self.split:
-                print(f"  shape of y: {self.y.shape}")
+            try:
+                print(f"  shape of x: {self.x.shape}")
+                if self.has_targets:
+                    print(f"  shape of y: {self.y.shape}")
+            except:
+                print(f"  shape of x: {len(self.x)}")
+                if self.has_targets:
+                    print(f"  shape of y: {len(self.y)}")
             print()
-        
+
     def __len__(self):
         return len(self.x)
 
     def __getitem__(self, idx):
-        if self.split:
-            return self.x[idx], self.y[idx]
+
+        if self.has_targets:
+            if self.store_as_tensor:
+                return self.x[idx], self.y[idx] 
+            else:
+                try:
+                    return self.x[idx], self.y[idx]
+                except:
+                    return [self.x[i] for i in idx], [self.y[i] for i in idx]                
         else:
             return self.x[idx]
 # ---------------------------------------------------------------------------
@@ -143,14 +181,14 @@ class Dataset(td.Dataset):
 class DataLoader:
     '''
     A data loader that is much faster than the default PyTorch DataLoader.
-    
+
     Notes:
-           
+
        If num_iterations is specified, it is assumed that this is the
-       desired maximum number of iterations, maxiter, per for-loop. 
-       The flag shuffle is automatically set to True and an internal 
-       count, defined by shuffle_step = floor(len(dataset) / batch_size) 
-       is computed. The indices for accessing items from the dataset 
+       desired maximum number of iterations, maxiter, per for-loop.
+       The flag shuffle is automatically set to True and an internal
+       count, defined by shuffle_step = floor(len(dataset) / batch_size)
+       is computed. The indices for accessing items from the dataset
        are shuffled every time the following condition is True
 
            itnum % shuffle_step == 0,
@@ -158,11 +196,11 @@ class DataLoader:
        where itnum is an internal counter that keeps track of the iteration
        number. If num_iterations is not specified (the default), then
        the maximum number of iterations, maxiter = shuffle_step.
-       
-       This data loader, unlike the PyTorch data loader does not provide the 
+
+       This data loader, unlike the PyTorch data loader does not provide the
        option to return the last batch if the latter is shorter than batch_size.
     '''
-    def __init__(self, dataset, 
+    def __init__(self, dataset,
                  batch_size=None,
                  num_iterations=None,
                  verbose=1,
@@ -177,33 +215,33 @@ class DataLoader:
         self.shuffle = shuffle
 
         self.size = len(dataset)
-        
+
         # need batch_size
         if self.batch_size == None:
             raise ValueError("you must specify a batch_size!")
-            
+
         # If shuffle, then shuffle the dataset every shuffle_step iterations
         self.shuffle_step = int(len(dataset) / self.batch_size)
 
         if self.verbose:
-            print('DataLoader')      
-        
+            print('DataLoader')
+
         if self.niterations != None:
-            # The user has specified the maximum number of iterations 
+            # The user has specified the maximum number of iterations
             assert(type(self.niterations)==type(0))
             assert(self.niterations > 0)
-            
+
             self.maxiter = self.niterations
-            
+
             # IMPORTANT: shuffle indices every self.shuffle_step iterations
             self.shuffle = True
 
             if self.verbose:
                 print('  Maximum number of iterations has been specified')
-                
+
         elif self.size > self.batch_size:
             self.maxiter = self.shuffle_step
-            
+
         else:
             # Note: this could be = 2 for a 2-tuple of tensors!
             self.size = len(dataset)
@@ -217,14 +255,12 @@ class DataLoader:
             print()
 
         assert(self.maxiter > 0)
-        
+
         # initialize iteration number
-        # IMPORTANT: must start at -1 so that itnum goes from
-        # 0 to batch_size - 1
-        self.itnum = -1
+        self.reset()
 
         # initial indices for dataset (useful for debugging)
-        self.indices = torch.tensor(np.linspace(0, 
+        self.indices = torch.tensor(np.linspace(0,
                                                 self.size-1,
                                                 self.size).astype(int))
 
@@ -233,10 +269,7 @@ class DataLoader:
         return self
 
     # This method implements and terminates iterations
-    def __next__(self): 
-
-        # IMPORTANT: increment iteration number here, since we reset to itnum=-1
-        self.itnum += 1
+    def __next__(self):
 
         if self.itnum < self.maxiter:
 
@@ -248,30 +281,35 @@ class DataLoader:
                     self.indices = torch.randperm(self.size)
                     if self.debug > 0:
                         print(f'DataLoader shuffled indices @ index {self.itnum}')
-                        
+
                 start = jtnum * self.batch_size
                 end = start + self.batch_size
                 indices = self.indices[start:end]
+
+                # increment iteration number
+                self.itnum += 1
+
                 return self.dataset[indices]
-                
+
             else:
                 # Create a new tensor directly indexing dataset
                 start = self.itnum * self.batch_size
                 end = start + self.batch_size
+
+                # increment iteration number
+                self.itnum += 1
+
                 return self.dataset[start:end]
         else:
             # Terminate iteration and reset iteration counter
-            # IMPORTANT: reset iteration number
-            # 0 to size - 1
-            self.itnum = -1
+            self.itnum = 0
             raise StopIteration
 
     def __len__(self):
         return self.maxiter
 
-    def __call__(self, itnum=0):
-        self.itnum = itnum-1
+    def __call__(self):
         return next(self)
-        
+
     def reset(self):
-        self.itnum = -1
+        self.itnum = 0
