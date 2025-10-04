@@ -468,4 +468,4 @@ class Objective(nn.Module):
     
     def forward(self, x, y):
         f = self.model(x)
-        return self.avgloss(f, y) 
+        return self.avgloss(f, y.reshape(f.shape)) 

@@ -163,15 +163,11 @@ class Dataset(td.Dataset):
         return len(self.x)
 
     def __getitem__(self, idx):
-
         if self.has_targets:
-            if self.store_as_tensor:
-                return self.x[idx], self.y[idx] 
-            else:
-                try:
-                    return self.x[idx], self.y[idx]
-                except:
-                    return [self.x[i] for i in idx], [self.y[i] for i in idx]                
+            try:
+                return self.x[idx], self.y[idx]
+            except:
+                return [self.x[i] for i in idx], [self.y[i] for i in idx]                
         else:
             return self.x[idx]
 # ---------------------------------------------------------------------------
