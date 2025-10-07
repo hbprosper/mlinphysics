@@ -175,6 +175,31 @@ class Dataset(td.Dataset):
 # DataLoader.
 # ---------------------------------------------------------------------------
 class DataLoader:
+    def __init__(self, dataset,
+                 batch_size=None,
+                 num_iterations=None,
+                 verbose=1,
+                 debug=0,
+                 shuffle=False):
+        
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_iterations = num_iterations
+        self.verbose = verbose
+        self.debug   = debug
+        self.shuffle = shuffle
+
+    def __iter__(self):
+        # return a new iterator each time
+        return DataLoaderIterator(
+            self.dataset,
+            self.batch_size,
+            self.num_iterations,
+            self.verbose,
+            self.debug,
+            self.shuffle)
+        
+class DataLoader:
     '''
     A data loader that is much faster than the default PyTorch DataLoader.
 
@@ -195,6 +220,8 @@ class DataLoader:
 
        This data loader, unlike the PyTorch data loader does not provide the
        option to return the last batch if the latter is shorter than batch_size.
+
+       This class uses the Python generator pattern
     '''
     def __init__(self, dataset,
                  batch_size=None,
@@ -205,7 +232,7 @@ class DataLoader:
 
         self.dataset = dataset
         self.batch_size = batch_size
-        self.niterations = num_iterations
+        self.num_iterations = num_iterations
         self.verbose = verbose
         self.debug   = debug
         self.shuffle = shuffle
@@ -213,34 +240,31 @@ class DataLoader:
         self.size = len(dataset)
 
         # need batch_size
-        if self.batch_size == None:
+        if self.batch_size is None:
             raise ValueError("you must specify a batch_size!")
 
-        # If shuffle, then shuffle the dataset every shuffle_step iterations
-        self.shuffle_step = int(len(dataset) / self.batch_size)
+        # if shuffle, then shuffle the dataset every shuffle_step iterations
+        self.shuffle_step = max(1, self.size // self.batch_size)
 
         if self.verbose:
             print('DataLoader')
 
-        if self.niterations != None:
-            # The user has specified the maximum number of iterations
-            assert(type(self.niterations)==type(0))
-            assert(self.niterations > 0)
+        if self.num_iterations is not None:
+            if self.verbose:
+                print('  Number of iterations has been specified')
 
-            self.maxiter = self.niterations
+            # the user has specified the number of iterations
+            assert(type(self.num_iterations)==type(0))
+            assert(self.num_iterations > 0)
+
+            self.maxiter = self.num_iterations
 
             # IMPORTANT: shuffle indices every self.shuffle_step iterations
-            self.shuffle = True
-
-            if self.verbose:
-                print('  Maximum number of iterations has been specified')
-
+            self.shuffle = True            
         elif self.size > self.batch_size:
             self.maxiter = self.shuffle_step
-
         else:
             # Note: this could be = 2 for a 2-tuple of tensors!
-            self.size = len(dataset)
             self.shuffle_step = 1
             self.maxiter = self.shuffle_step
 
@@ -253,59 +277,53 @@ class DataLoader:
         assert(self.maxiter > 0)
 
         # initialize iteration number
-        self.reset()
+        self.itnum = 0
 
         # initial indices for dataset (useful for debugging)
-        self.indices = torch.tensor(np.linspace(0,
-                                                self.size-1,
-                                                self.size).astype(int))
-
-    # Tell Python to make objects of type DataLoader iterable
+        self.indices = torch.arange(self.size)
+        
+    # This method implements the Python generator pattern.
+    # The for loop
+    #  for batch in loader:
+    #          : :
+    # is logically equivalent to:
+    #
+    #  iterator = iter(loader) # call __iter__(self) once
+    #  while True
+    #     try:
+    #        batch = next(iterator) # which resumes execution at yield call
+    #     except StopIteration:
+    #        break
+    
     def __iter__(self):
-        return self
 
-    # This method implements and terminates iterations
-    def __next__(self):
-
-        if self.itnum < self.maxiter:
+        self.itnum = 0
+        while self.itnum < self.maxiter:
 
             if self.shuffle:
-                # Create a new tensor indexing dataset via a random
+                # create a new tensor indexing dataset via a random
                 # sequence of indices
                 jtnum = self.itnum % self.shuffle_step
-                if self.itnum > 0 and (jtnum == 0):
+                if self.itnum > 0 and jtnum == 0:
                     self.indices = torch.randperm(self.size)
                     if self.debug > 0:
                         print(f'DataLoader shuffled indices @ index {self.itnum}')
 
-                start = jtnum * self.batch_size
-                end = start + self.batch_size
+                start   = jtnum * self.batch_size
+                end     = start + self.batch_size
                 indices = self.indices[start:end]
-
-                # increment iteration number
-                self.itnum += 1
-
-                return self.dataset[indices]
-
+                batch   = self.dataset[indices]
             else:
-                # Create a new tensor directly indexing dataset
-                start = self.itnum * self.batch_size
-                end = start + self.batch_size
+                # create a new tensor directly indexing dataset
+                start   = self.itnum * self.batch_size
+                end     = start + self.batch_size
+                batch   = self.dataset[start:end]
 
-                # increment iteration number
-                self.itnum += 1
+            # increment iteration number
+            self.itnum += 1
 
-                return self.dataset[start:end]
-        else:
-            # Terminate iteration and reset iteration counter
-            self.itnum = 0
-            raise StopIteration
+            # pause function and return a value
+            yield batch
 
     def __len__(self):
         return self.maxiter
-
-    def __call__(self):
-        return next(self)
-
-    def reset(self):
-        self.itnum = 0
