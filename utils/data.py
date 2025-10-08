@@ -57,7 +57,6 @@ class UniformSample(np.ndarray):
         # Cast the numpy array to the type UniformSample
         sample = np.asarray(sample).view(cls)
         return sample
-
 # ---------------------------------------------------------------------------
 # Custom Dataset that takes (N, D) array of N points in the unit D-cube,
 # Taken from AIMS PINN project
@@ -66,7 +65,7 @@ class Dataset(td.Dataset):
 
     def __init__(self, data, start, end,
                  targets=None,         # can specify targets explicitly
-                 split_at=None,        # split data: [cols], [ncols-cols]
+                 split_col=None,       # split data: [cols], [ncols-cols]
                  requires_grad=False,  # if True and split_data specified,
                  random_sample_size=None,
                  device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -77,7 +76,7 @@ class Dataset(td.Dataset):
         self.verbose  = verbose
         self.device   = device
         has_targets   = type(targets) != type(None)
-        split_data    = type(split_at) != type(None)
+        split_data    = type(split_col) != type(None)
 
         # store_as_tensor will be false if data is a list of tensors
         try:
@@ -123,16 +122,15 @@ class Dataset(td.Dataset):
         # perhaps we should split?
         if split_data:
             has_targets = True # important!
-            cols = split_at
-            y = x[:, cols:]
-            x = x[:, :cols]
+            y = x[:, split_col:]
+            x = x[:, :split_col].view(-1, split_col)
 
         if requires_grad:
             if self.store_as_tensor:
-                x = x.requires_grad_().to(device)
+                x = x.requires_grad_(True)
             else:
                 # assume we have a list of tensors
-                x = [d.requires_grad_().to(device) for d in x]
+                x = [d.requires_grad_(True) for d in x]
 
         # cache, needed later
         self.has_targets = has_targets
@@ -174,31 +172,6 @@ class Dataset(td.Dataset):
 # Custom DataLoader that is much faster than the default usage of the PyTorch
 # DataLoader.
 # ---------------------------------------------------------------------------
-class DataLoader:
-    def __init__(self, dataset,
-                 batch_size=None,
-                 num_iterations=None,
-                 verbose=1,
-                 debug=0,
-                 shuffle=False):
-        
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.num_iterations = num_iterations
-        self.verbose = verbose
-        self.debug   = debug
-        self.shuffle = shuffle
-
-    def __iter__(self):
-        # return a new iterator each time
-        return DataLoaderIterator(
-            self.dataset,
-            self.batch_size,
-            self.num_iterations,
-            self.verbose,
-            self.debug,
-            self.shuffle)
-        
 class DataLoader:
     '''
     A data loader that is much faster than the default PyTorch DataLoader.
@@ -260,9 +233,11 @@ class DataLoader:
             self.maxiter = self.num_iterations
 
             # IMPORTANT: shuffle indices every self.shuffle_step iterations
-            self.shuffle = True            
+            self.shuffle = True  
+            
         elif self.size > self.batch_size:
             self.maxiter = self.shuffle_step
+            
         else:
             # Note: this could be = 2 for a 2-tuple of tensors!
             self.shuffle_step = 1

@@ -52,9 +52,8 @@ def initialize_model(model, paramsfile):
 # This function assumes that the len(loader) is the same as
 # the batch size given when the loader is instantiated
 def compute_avg_loss(objective, loader):
-    with torch.no_grad():
-        objective.eval()
-        avg_loss = sum([float(objective(x, y).cpu()) for x, y in loader]) / len(loader)
+    objective.eval()
+    avg_loss = sum([float(objective(x, y).cpu()) for x, y in loader]) / len(loader)
     return avg_loss
 
 def elapsed_time(now, start):
@@ -139,8 +138,8 @@ class Model(nn.Module):
                                         map_location=torch.device('cpu')))
         self.eval()
             
-    def forward(self, x, p=None):        
-        if type(p) != type(None):
+    def forward(self, x, p=None):
+        if p is not None:
             p = p.repeat(len(x), 1) if p.ndim < 2 else p
             x = torch.concat((x, p), dim=-1)
             
@@ -187,27 +186,6 @@ class FCNN(Model):
         cmd  = cmd.replace(', ,', ', ') # Hack!
         
         self.net = eval(cmd)
-
-    # def save(self, dictfile):
-    #     # save parameters of neural network
-    #     torch.save(self.state_dict(), dictfile)
-
-    # def load(self, dictfile):
-    #     # load parameters of neural network and set to eval mode
-    #     self.load_state_dict(torch.load(dictfile, 
-    #                                     weights_only=True,
-    #                                     map_location=torch.device('cpu')))
-    #     self.eval()
-
-    # def forward(self, x, p=None):
-    #     assert(x.ndim==2)
-        
-    #     if type(p) != type(None):
-    #         p = p.repeat(len(x), 1) if p.ndim < 2 else p
-    #         x = torch.concat((x, p), dim=-1)
-
-    #     y = self.net(x)   
-    #     return y
 # ----------------------------------------------------------------------------
 # Extreme learning machine
 # experimental
