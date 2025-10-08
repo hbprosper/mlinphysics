@@ -49,11 +49,16 @@ def initialize_model(model, paramsfile):
                                      map_location=torch.device('cpu')))
     model.eval()
 
+def initialize_parameters(m):
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.zeros_(m.bias)
+
 # This function assumes that the len(loader) is the same as
 # the batch size given when the loader is instantiated
 def compute_avg_loss(objective, loader):
     objective.eval()
-    avg_loss = sum([float(objective(x, y).cpu()) for x, y in loader]) / len(loader)
+    avg_loss = sum([float(objective(x, y).detach().cpu()) for x, y in loader]) / len(loader)
     return avg_loss
 
 def elapsed_time(now, start):
