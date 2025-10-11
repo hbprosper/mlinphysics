@@ -167,7 +167,7 @@ class FCNN(Model):
     '''
     
     def __init__(self, 
-                 n_inputs=2, 
+                 n_inputs, 
                  n_hidden=4, 
                  n_width=32, 
                  f_hidden=Sin, 
