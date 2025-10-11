@@ -1,0 +1,8 @@
+# stuff to ignore
+*ipynb_checkpoint*
+*__pycache__
+*.DS_Store
+*.timeleft
+*_losses.csv
+*~$*
+
