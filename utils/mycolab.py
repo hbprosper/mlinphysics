@@ -11,7 +11,7 @@ FAIL  = "\u274C"
 WARN  = "\u26A0"
 # --------------------------------------------------------------------
 def git_clone(folder='AIMS/tutorials/code',
-              repo= f'https://github.com/hbprosper',
+              repo= 'https://github.com/hbprosper',
               name='mlinphysics'):
     
     url      = f'{repo}/{name}'
