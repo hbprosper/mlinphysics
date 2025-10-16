@@ -21,6 +21,8 @@ class KDNode:
                                 n is the number of points in leaf
                                 m is the dimension of the vector space in which 
                                 the point cloud resides.
+                                
+      indices: (n, )-ndarray  The index (ordinal value of each point)
                   
       bounds: (m, 2)-ndarray  min and max limits of bounding box.
       
@@ -30,8 +32,9 @@ class KDNode:
 
       volume: float           Volume of bounding box.
     '''
-    def __init__(self, points, axis, bounds, left=None, right=None):
+    def __init__(self, points, indices, axis, bounds, left=None, right=None):
         self.points = points        # None, or all points within the leaf
+        self.indices= indices       #
         self.bounds = bounds        # bounding box [(min_0, max_0),(min_1, max_2),...] 
         self.density= None          # estimate of probability density
         self.volume = None          # volume of bounding box
@@ -71,6 +74,9 @@ class KDTree:
         # sample size (number of points)
         self.size = len(points)
 
+        # index of each point
+        indices = np.linspace(0, self.size-1, self.size).astype(int)
+        
         self.leaf_size = leaf_size
 
         self.store_nodeinfo = store_nodeinfo
@@ -88,19 +94,19 @@ class KDTree:
         self.nodeinfo = []
         
         # build tree recursively
-        self.node = self._build(points, bounds=(mins, maxs), depth=0)
+        self.node = self._build(points, indices, bounds=(mins, maxs), depth=0)
 
         # sort leaves in order of decreasing probability density
         # Note: argsort() returns the indices that would sort the array
         ii = np.array([leaf.density for leaf in self.leaves]).argsort()
-        ii = np.flip(ii) # reverse order of indices
+        ii = np.flip(ii) # reverse order of ode nindices
         self.leaves = list(np.array(self.leaves)[ii])
         
         # set leaf IDs
         for i in range(len(self.leaves)):
             self.leaves[i].ID = i 
             
-    def _build(self, points, bounds, depth):
+    def _build(self, points, indices, bounds, depth):
         
         # get  number of points and dimensionality of vector space
         n_points, n_dim = points.shape
@@ -115,7 +121,7 @@ class KDTree:
 
             bounds = np.array(bounds).T # [[min_0, max_0], [min_1, max_1], ...]
             
-            leaf = KDNode(points=points, axis=axis, bounds=bounds)
+            leaf = KDNode(points=points, indices=indices, axis=axis, bounds=bounds)
 
             # add more information to leaf
             leaf.volume  = float(math.prod([xmax-xmin for xmin, xmax in bounds]))
@@ -127,10 +133,14 @@ class KDTree:
             return leaf
             
         # ...otherwise split current node at median point along current axis
-        sorted_points = points[points[:, axis].argsort()]
+
+        ii = points[:, axis].argsort() # get indices that would sort points along given axis
+        
+        sorted_points = points[ii]
+        sorted_indices= indices[ii]
         median_idx    = n_points // 2
         split_point   = sorted_points[median_idx]
-
+  
         # create bounds for children
         mins, maxs = bounds
 
@@ -146,10 +156,18 @@ class KDTree:
         right_mins[axis] = split_point[axis]
 
         # build children
-        left  = self._build(sorted_points[:median_idx], (mins.copy(), left_maxs),  depth + 1)
-        right = self._build(sorted_points[median_idx:], (right_mins, maxs.copy()), depth + 1)
+        left  = self._build(sorted_points[:median_idx], 
+                            sorted_indices[:median_idx],
+                            (mins.copy(), left_maxs),  depth + 1)
+        
+        right = self._build(sorted_points[median_idx:],
+                            sorted_indices[median_idx:],
+                            (right_mins, maxs.copy()), depth + 1)
 
-        node  = KDNode(points=None, axis=axis, bounds=bounds, left=left, right=right)
+        node  = KDNode(points=None, indices=None, 
+                       axis=axis, bounds=bounds, 
+                       left=left, right=right)
+        
         node.split_point_ = split_point 
         
         return node
