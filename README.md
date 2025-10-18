@@ -1,5 +1,5 @@
 # Machine Learning in Physics
-## Code Repository for a Special Topics Course
+## Code Repository for a Special Topics Course in Machine Learning in Physics
 
 ## Introduction
 This repository contains machine learning tutorials and lectures associated with the Special Topics Course on Machine Learning in Physics at Florida State University, Department of Physics. The course is designed for graduate students and senior undergrads who have little to no experience with machine learning, but have some experience with Python.
