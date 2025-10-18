@@ -2,7 +2,7 @@
 ## Code Repository for PHY6937/PHY4936 Special Topics Course
 
 ## Introduction
-This repository contains machine learning tutorials associated with the Special Topics Course Florida State University, Department of Physics. The course is designed for graduate students and senior undergrads who have little to no experience with machine learning.
+This repository contains machine learning tutorials associated with the Special Topics Course on Machine Learning in Physics at Florida State University, Department of Physics. The course is designed for graduate students and senior undergrads who have little to no experience with machine learning, but have some experience with Python.
 
 
 ## Dependencies
@@ -16,7 +16,7 @@ well-engineered and free Python modules.
 | scipy         | scientific computing    |
 | sympy         | an excellent symbolic mathematics module |
 | matplotlib    | a widely used plotting module for producing high quality plots |
-| imageio.v3      | photo-quality image display module |
+| imageio      | photo-quality image display module |
 | scikit-learn  | easy to use machine learning toolkit |
 | pytorch       | a powerful, flexible, research-level machine learning toolkit |
 | iminuit | a rewrite of the venerable CERN minimizer Minuit |

@@ -5,4 +5,4 @@
 *.timeleft
 *_losses.csv
 *~$*
-
+*egg-info*
