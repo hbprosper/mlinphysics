@@ -1,4 +1,4 @@
-# Laboratory Tutotials / Exercises
+# Laboratory Tutorials / Exercises
 | __modules__   | __description__     |
 | :---          | :---        |
 | 01.Perceptron        | perceptron |
