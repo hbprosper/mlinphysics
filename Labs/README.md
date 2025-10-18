@@ -1,12 +1,12 @@
 # Laboratory Exercises
 | __modules__   | __description__     |
 | :---          | :---        |
-| Lab01        | perceptron |
-| Lab02         | classifier performance measures: ROC curve and AUC   |
-| Lab03         | classifier performance measures: confusion matrix, etc.   |
-| Lab04         | convolution neural networks (CNN) |
-| Lab05    | autoencoder (AE) and convolutional autoencoder (CAE) |
-| Lab06      | physics-informed neural network (PINN) |
-| Lab07  | normalization flows and diffusion models |
-| Lab08       | graph neural network (GNN) |
-| Lab09 | transformers |
+| 01.Perceptron        | perceptron |
+| 02.Metrics         | classifier performance measures   |
+| 03.ClosureTest         | classifier performance closure test  |
+| 04.CNN         | convolution neural networks (CNN) |
+| 05.PINN    | physics-informed neural network (PINN)  |
+| 06.GNN      | graph neural network (GNN) |
+| 07.AE  | autoencoder (AE) and convolutional autoencoder (CAE)  |
+| 08.NFlow_DModel       | normalization flows and diffusion models |
+| 10.Transformer | transformers |
