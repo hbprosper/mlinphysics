@@ -1,15 +1,11 @@
 # Lectures
 | __modules__   | __description__     |
 | :---          | :---        |
-| Week01        | perceptron, multi-node perceptron, loss functions, empirical risk, risk functional  |
-| Week02        | risk functional minimization, generalization, common loss functions  |
-| Week03        | simple 2D classification tutorial |
-| Week04        | binary classifiers, ROC curve and AUC |
-| Week05 | confusion matrix, accuracy, precision, recall|
-| Week06 | convolutional neural networks (CNN) |
-| Week07 | autoencoders |
-| Week08 | physics-informed neural networks (GNN)|
-| Week09 | student projects |
-| Week10 | flow and diffusion models |
-| Week11 | graph neural networks (GNN)|
-| Week12 | transformer neural networks (TNN)|
+| 01.Foundations        | perceptron, multi-node perceptron, loss functions, empirical risk, risk functional minimization, common loss functions, simple classification tutorial, metrics   |
+| 02.CNN        | convolutional neural networks (CNN) |
+| 03.PINN        | physics-informed neural networks (PINN)  |
+| 04.GNN        | graph neural networks (GNN) |
+| 05.AE | autoencoders (AE)|
+| 06.NFlows_DModel | normalizing flow and diffusion models |
+| 07.GAE | graph autoencoders (GAE) |
+| 08.Transformer | transformer neural networks (TNN)|
