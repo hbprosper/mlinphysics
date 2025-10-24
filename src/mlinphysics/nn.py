@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data as td
+from datetime import datetime
 from torch.optim.lr_scheduler import MultiStepLR
 
 import scipy.stats as st
@@ -286,9 +287,7 @@ class Config:
 
           name:      name stub for all files, including the yaml file
           batchsize: 
-          niter:     number of iterations
           base_lr:   base learning rate
-          network:   network structure (n_hidden, n_width)
             :
           etc.
     '''
@@ -305,6 +304,12 @@ class Config:
                        from the file.
         '''
         self.time = time.ctime()
+
+        # create run folder
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+        basedir = f"runs/{timestamp}"
+        os.makedirs("runs", exist_ok=True)
+        os.makedirs(basedir, exist_ok=True)
         
         # check if a yaml file has been specified
         if name.endswith('.yaml') or name.endswith('.yml'):
@@ -320,17 +325,19 @@ class Config:
             cfg['name'] = name
     
             # construct output file names    
-            fcg = {}
-            fcg['losses']     = f'{name}_losses.csv'
-            fcg['params']     = f'{name}_params.pth'
-            fcg['init_params']= f'{name}_init_params.pth'
+            o_cfg = {}
+
+            o_cfg['losses']     = f'{basedir}/{name}_losses.csv'
+            o_cfg['params']     = f'{basedir}/{name}_params.pth'
+            o_cfg['init_params']= f'{basedir}/{name}_init_params.pth'
+            o_cfg['plots']      = f'{basedir}/{name}_plots.png'
             
-            cfg['file'] = fcg
+            cfg['file'] = o_cfg
     
             # create a default name for yaml configuration file
             # this name will be used if a filename is not
             # specified in the save method
-            self.cfg_filename = f'{name}_config.yaml'
+            self.cfg_filename = f'{basedir}/{name}_config.yaml'
     
         if verbose:
             print(self.__str__())
