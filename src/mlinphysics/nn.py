@@ -323,7 +323,7 @@ class Config:
             fcg = {}
             fcg['losses']     = f'{name}_losses.csv'
             fcg['params']     = f'{name}_params.pth'
-            fcg['initparams'] = f'{name}_init_params.pth'
+            fcg['init_params']= f'{name}_init_params.pth'
             
             cfg['file'] = fcg
     

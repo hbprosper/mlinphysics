@@ -106,7 +106,8 @@ class Dataset(td.Dataset):
             length  = end - start
             assert(length > 0)
 
-            indices = torch.randint(0, length-1, size=(random_sample_size,))
+            indices = torch.randint(start, end-1,
+                                        size=(random_sample_size,))
             if self.store_as_tensor:
                 x = torch.Tensor(data[indices])
             else:
