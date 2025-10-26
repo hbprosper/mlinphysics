@@ -15,6 +15,9 @@ import h5py
 import torch
 import torch.nn as nn
 
+# graph G = (V, E) plots
+import networkx as nx
+
 from tqdm import tqdm
 # ----------------------------------------------------------------
 SM, SIG = -1, 1
@@ -178,7 +181,7 @@ def plot_graphs(loader, ptscale=25, scale=80,
                 filename='events_as_graphs.png',
                 ftsize=14):
 
-    plt.rcParams.update({'font.size': 20})
+    plt.rcParams.update({'font.size': 16})
 
     # work out number of columns and number of plots
     ncols = 2
@@ -205,7 +208,7 @@ def plot_graphs(loader, ptscale=25, scale=80,
         evt = event.squeeze().view(-1,len(pt), 3)
         A   = gedge(evt).squeeze()
 
-        ax.set_xlabel(f'$y = {int(y.detach()):d}$ - node count: {len(pt):4d}')
+        ax.set_xlabel(f'$y = {int(y):d}$ - node count: {len(pt):4d}')
       
         size = scale * np.sqrt(pt / ptscale)
         cmap = mp.colormaps['rainbow']
