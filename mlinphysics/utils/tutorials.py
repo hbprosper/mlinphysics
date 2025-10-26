@@ -19,7 +19,7 @@ from tqdm import tqdm
 # -------------------------------------------
 SM, SIG = -1, 1
 # -------------------------------------------
-def load_events(filename, pTcut=4.0, which=0):
+def load_events(filename, pTcut=0.5, which=0):
     hdf = h5py.File(filename, "r")
 
     targets = np.array(hdf['targets'])
@@ -50,8 +50,9 @@ def load_events(filename, pTcut=4.0, which=0):
         event  = event[select]
         if len(event)==0:
             continue
-
-        ptmean += pT[select].mean()
+        pT = pT[select]
+        
+        ptmean += pT.mean()
         n = len(event)
         m1 += n
         m2 += n**2
