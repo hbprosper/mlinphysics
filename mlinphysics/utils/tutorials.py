@@ -77,11 +77,11 @@ def load_events(filename, pTcut=0.5, which=0):
     ptmean /= len(events)
     
     print()
-    print(f'\tsample size:            {len(events):6d}')
-    print(f'\tmin(multiplicity):      {mincount:6d}')
-    print(f'\tmax(multiplicity):      {maxcount:6d}')
-    print(f'\tE[pT]:                  {ptmean:8.1f} GeV')
-    print(f'\tE[multiplicity] +/-std: {m1:8.1f} +/-{m2:<8.1f}')
+    print(f'\tsample size:              {len(events):6d}')
+    print(f'\tmin[multiplicity]:        {mincount:6d}')
+    print(f'\tavg[multiplicity] +/-std: {m1:8.1f} +/-{m2:<8.1f}')
+    print(f'\tmax[multiplicity]:        {maxcount:6d}')
+    print(f'\tavg[pT]:                  {ptmean:8.1f} GeV')
 
     return events, np.array(trgs)
 
