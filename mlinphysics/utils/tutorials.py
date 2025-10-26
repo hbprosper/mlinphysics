@@ -178,7 +178,7 @@ def plot_graphs(loader, ptscale=25, scale=80,
                 filename='events_as_graphs.png',
                 ftsize=14):
 
-    plt.rcParams.update({'font.size': 10})
+    plt.rcParams.update({'font.size': 20})
 
     # work out number of columns and number of plots
     ncols = 2
@@ -196,8 +196,6 @@ def plot_graphs(loader, ptscale=25, scale=80,
         if i > ndata-1: break
 
         ax = axs[i]
-
-        ax.set_xlabel(f'$y = {int(y.detach()):d}$')
         
         # get point cloud (i.e., event).
         # area of points in (eta, phi) proportional to pT of particle
@@ -207,8 +205,8 @@ def plot_graphs(loader, ptscale=25, scale=80,
         evt = event.squeeze().view(-1,len(pt), 3)
         A   = gedge(evt).squeeze()
 
-        print(f'number of particles with pT > 4 GeV: {len(pt):4d}')
-        
+        ax.set_xlabel(f'$y = {int(y.detach()):d}$ - node count: {len(pt):4d}')
+      
         size = scale * np.sqrt(pt / ptscale)
         cmap = mp.colormaps['rainbow']
         colors = cmap(size / size.max(), alpha=1)
@@ -266,7 +264,7 @@ class IceCubeAdjacencyMatrix(nn.Module):
 
         # use broadcasting to compute all possible differences
         deta = eta.view(-1, size, 1) - eta.view(-1, 1, size)
-        dphi = tut.delta_phi(phi.view(-1, size, 1), phi.view(-1, 1, size))
+        dphi = delta_phi(phi.view(-1, size, 1), phi.view(-1, 1, size))
         dRdR = deta**2 + dphi**2
 
         # 2. compute exp(- alpha * dR)**2)
