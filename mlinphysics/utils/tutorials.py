@@ -121,12 +121,12 @@ def load_events(filename, pTcut=0.5, which=0):
     return events, np.array(trgs)
 
 def plot_events(events, targets, 
-                ndata=12, ptscale=25, scale=80,
+                ndata=9, ptscale=25, scale=80,
                 xmin=-6.0, xmax=6.0,
                 ymin=-4.0, ymax=4.0,
                 filename='events.png',
-                ncols=4,
-                fgscale=1.65,
+                ncols=3,
+                fgscale=2.0,
                 xpos_frac=0.14,
                 ypos_frac=0.36,
                 ftsize=14):
@@ -175,19 +175,20 @@ def plot_events(events, targets,
     fig.tight_layout()
     plt.savefig(filename)
 
-def plot_graphs(loader, ptscale=25, scale=80,
-                xmin=-6.0, xmax=6.0,
-                ymin=-4.0, ymax=4.0,
+def plot_graphs(loader, 
+                ndata=9, ptscale=25, scale=8,
+                ncols=3,
+                fgscale=2.5,
                 filename='events_as_graphs.png',
                 ftsize=14):
 
-    plt.rcParams.update({'font.size': 16})
+    plt.rcParams.update({'font.size': 14})
 
     # work out number of columns and number of plots
-    ncols = 2
-    nrows = 2
-    ndata = ncols * nrows
-    fgsize= (7, 7)
+    nrows = ndata // ncols
+    ndata = nrows *  ncols
+    fgsize= (fgscale*ncols, fgscale*nrows)
+
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=fgsize)
     
     axs = axs.flatten()
@@ -202,13 +203,12 @@ def plot_graphs(loader, ptscale=25, scale=80,
         
         # get point cloud (i.e., event).
         # area of points in (eta, phi) proportional to pT of particle
-        
-        pt, eta, phi = event[0,:,:].detach().numpy().T[:]
+        pt, eta, phi = event[0,:,:].detach().numpy().T[:]            
         y = y.detach().numpy()[0]
         evt = event.squeeze().view(-1,len(pt), 3)
         A   = gedge(evt).squeeze()
 
-        ax.set_xlabel(f'$y = {int(y):d}$ - node count: {len(pt):4d}')
+        ax.set_xlabel(f'$y = {int(y):d}$ - count: {len(pt):5d}')
       
         size = scale * np.sqrt(pt / ptscale)
         cmap = mp.colormaps['rainbow']
@@ -244,6 +244,93 @@ def plot_graphs(loader, ptscale=25, scale=80,
 
     #fig.tight_layout()
     plt.savefig(filename)
+
+def plot_confusion_matrix(targets, predictions, 
+                          fgsize=(4, 4),
+                          gfile='confusion_matrix.png'):
+    from sklearn.metrics import confusion_matrix
+
+    # Calculate the confusion matrix
+    conf_matrix = confusion_matrix(y_true=targets, y_pred=predictions)
+
+    # plot the confusion matrix 
+    fig, ax = plt.subplots(figsize=fgsize)
+    ax.matshow(conf_matrix, cmap=plt.cm.rainbow, alpha=0.4)
+
+    # annotate each element of matrix with count
+    for i in range(conf_matrix.shape[0]):
+        for j in range(conf_matrix.shape[1]):
+            ax.text(x=j, y=i, s=conf_matrix[i, j],
+                    va='center', ha='center', size='x-large')
+
+    plt.xlabel('Predicted Labels', fontsize=16)
+    plt.ylabel('True Labels', fontsize=16)
+    plt.title(f'Confusion Matrix', fontsize=16)
+
+    fig.tight_layout()
+    plt.savefig(gfile)
+
+
+def histogram_classifier_outputs(targets, y_hat,
+                 xbins=50, xmin=0, xmax=1,
+                 ymin=0, ymax=None,
+                 filename='outputs.png',
+                 fgsize=(5, 4),
+                 ftsize=14):
+
+    s = y_hat[targets > 0.5]
+    b = y_hat[targets < 0.5]
+    
+    # create an empty figure
+    fig = plt.figure(figsize=fgsize)
+
+    nrows, ncols, index = 1, 1, 1
+    ax = fig.add_subplot(nrows, ncols, index)
+
+    # setup axes
+    ax.set_xlim(xmin, xmax)
+    ax.set_xlabel(r'$y = D(G)$', fontsize=ftsize)
+    ax.set_ylabel('density($y$)', fontsize=ftsize)
+
+    cs, _, _ = ax.hist(s, bins=xbins, range=(xmin, xmax), 
+            color='blue', alpha=0.3, label='signal', density=True)
+ 
+    cb, _, _ = ax.hist(b, bins=xbins, range=(xmin, xmax), 
+            color='red', alpha=0.3, label='background', density=True)
+
+    if ymax is None:
+        ymax = 2 * np.ceil(max(cs.max(), cb.max())/2)
+        ax.set_ylim(ymin, ymax)
+
+    ax.legend()
+
+    fig.tight_layout()
+    plt.savefig(filename)
+
+def plot_roc(targets, y_hat, 
+             fgsize=(4, 4), filename='ROC.png'):
+    # standard measures of model performance
+    from sklearn.metrics import roc_curve, auc
+
+    bkg, sig, _ = roc_curve(targets, y_hat)
+
+    roc_auc = auc(bkg, sig)
+
+    fig = plt.figure(figsize=fgsize)
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('$P(\\hat{y} > y | B)$', fontsize=14)
+    plt.ylabel('$P(\\hat{y} > y | S)$', fontsize=14)
+
+    plt.plot(bkg, sig, color='red',
+             lw=1, label='ROC curve, AUC = %0.2f)' % roc_auc)
+
+    plt.plot([0, 1], [0, 1], color='blue', lw=1, linestyle='--')
+
+    plt.legend(loc="lower right", fontsize=11)
+    fig.tight_layout()
+    plt.savefig("ROC.png")
     
 class IceCubeAdjacencyMatrix(nn.Module):
     '''
