@@ -311,6 +311,12 @@ class Config:
         '''
         self.makedir = mkdir
         self.dirname = dirname
+        if self.dirname is None:
+            self.time = time.ctime()
+            self.dirname = datetime.now().strftime("%Y-%m-%d_%H%M")
+            
+        logdir = f"runs/{self.dirname}"
+        self.logdir = logdir
         
         # create run folder if self.makedir is True
         self.mkdir()
@@ -331,30 +337,25 @@ class Config:
             # construct output file names    
             o_cfg = {}
 
-            o_cfg['losses']     = f'{basedir}/{name}_losses.csv'
-            o_cfg['params']     = f'{basedir}/{name}_params.pth'
-            o_cfg['init_params']= f'{basedir}/{name}_init_params.pth'
-            o_cfg['plots']      = f'{basedir}/{name}_plots.png'
-            
+            o_cfg['losses']     = f'{logdir}/{name}_losses.csv'
+            o_cfg['params']     = f'{logdir}/{name}_params.pth'
+            o_cfg['init_params']= f'{logdir}/{name}_init_params.pth'
+            o_cfg['plots']      = f'{logdir}/{name}_plots.png'
+
             cfg['file'] = o_cfg
     
             # create a default name for yaml configuration file
             # this name will be used if a filename is not
             # specified in the save method
-            self.cfg_filename = f'{basedir}/{name}_config.yaml'
+            self.cfg_filename = f'{logdir}/{name}_config.yaml'
     
         if verbose:
             print(self.__str__())
 
     def mkdir(self):
         if self.makedir:
-            if self.dirname is None:
-                self.time = time.ctime()
-                self.dirname = datetime.now().strftime("%Y-%m-%d_%H%M")
-                
-            logdir = f"runs/{self.dirname}"
             os.makedirs("runs", exist_ok=True)
-            os.makedirs(logdir, exist_ok=True) 
+            os.makedirs(self.logdir, exist_ok=True) 
         
     def load(self, filename):
         # make sure file exists
