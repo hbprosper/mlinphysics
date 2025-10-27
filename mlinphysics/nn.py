@@ -11,6 +11,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data as td
+
+import time
 from datetime import datetime
 from torch.optim.lr_scheduler import MultiStepLR
 
@@ -292,7 +294,6 @@ class Config:
           etc.
     '''
     def __init__(self, name, mkdir=True, dirname=None, verbose=0):
-        import time
         '''
         name  : string   Stub for all files, including the yaml file, or 
                          the name of a yaml file. A json file is identified 
