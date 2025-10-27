@@ -106,7 +106,7 @@ def plot_loss_curve(losses):
     xx, yy_t, yy_v = losses
     
     # create an empty figure
-    fig = plt.figure(figsize=(6, 3.8))
+    fig = plt.figure(figsize=(6, 4.0))
     fig.tight_layout()
     
     # add a subplot to it
@@ -291,26 +291,29 @@ class Config:
             :
           etc.
     '''
-    def __init__(self, name, verbose=0):
+    def __init__(self, name, mkdir=True, dirname=None, verbose=0):
         import time
         '''
-        name:   name stub for all files, including the yaml file, or 
-                the name of a yaml file. A json file is identified 
-                by the extension .yaml
+        name  : string   Stub for all files, including the yaml file, or 
+                         the name of a yaml file. A json file is identified 
+                         by the extension .yaml
                 
-                    1. if name is a name stub, create a new yaml object.
-                
-                    2. if name is a yaml filename, create the yaml object
-                       from the file.
+                            1. if name is a name stub, create a new yaml object.
+                            2. if name is a yaml filename, create the yaml object
+                               from the file.
+                               
+        mkdir : bool     If True create log folder [True]. The default name is
+                         runs/<timestamp>.
+                         
+        dirname : string If given use this as the name of the folder: 
+                         runs/<dirname>.
         '''
-        self.time = time.ctime()
-
-        # create run folder
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        basedir = f"runs/{timestamp}"
-        os.makedirs("runs", exist_ok=True)
-        os.makedirs(basedir, exist_ok=True)
+        self.makedir = mkdir
+        self.dirname = dirname
         
+        # create run folder if self.makedir is True
+        self.mkdir()
+                
         # check if a yaml file has been specified
         if name.endswith('.yaml') or name.endswith('.yml'):
             self.cfg_filename = name # cache filename
@@ -341,7 +344,17 @@ class Config:
     
         if verbose:
             print(self.__str__())
-            
+
+    def mkdir(self):
+        if self.makedir:
+            if self.dirname is None:
+                self.time = time.ctime()
+                self.dirname = datetime.now().strftime("%Y-%m-%d_%H%M")
+                
+            logdir = f"runs/{self.dirname}"
+            os.makedirs("runs", exist_ok=True)
+            os.makedirs(logdir, exist_ok=True) 
+        
     def load(self, filename):
         # make sure file exists
         if not os.path.exists(filename):

@@ -15,11 +15,32 @@ import h5py
 import torch
 import torch.nn as nn
 
+try:
+    # PyG
+    from torch_geometric.nn import global_mean_pool
+    from torch_geometric.data import Data
+    from torch_geometric.loader import DataLoader
+    from torch_geometric.utils import scatter, softmax, subgraph
+except:
+    print(f'''
+{WARN}: PyTorch Geometric is needed!
+
+    Please use either
+        conda install torch_geometric
+    or 
+        pip install torch_geometric
+
+    to install the module. 
+    ''')
+
 # graph G = (V, E) plots
 import networkx as nx
 
 from tqdm import tqdm
 # ----------------------------------------------------------------
+CHECK = "\u2705"
+FAIL  = "\u274C"
+WARN  = "\u26A0"
 SM, SIG = -1, 1
 # ----------------------------------------------------------------
 def delta_phi(phi2, phi1):
@@ -119,7 +140,9 @@ def load_events(filename, pTcut=0.5, which=0):
     print(f'\tavg[pT]:                  {ptmean:8.1f} GeV')
 
     return events, np.array(trgs)
-
+# ----------------------------------------------------------------
+# plotters
+# ----------------------------------------------------------------
 def plot_events(events, targets, 
                 ndata=9, ptscale=25, scale=80,
                 xmin=-6.0, xmax=6.0,
@@ -289,7 +312,7 @@ def histogram_classifier_outputs(targets, y_hat,
 
     # setup axes
     ax.set_xlim(xmin, xmax)
-    ax.set_xlabel(r'$y = D(G)$', fontsize=ftsize)
+    ax.set_xlabel(r'$\\hat{y} = D(G)$', fontsize=ftsize)
     ax.set_ylabel('density($y$)', fontsize=ftsize)
 
     cs, _, _ = ax.hist(s, bins=xbins, range=(xmin, xmax), 
@@ -331,7 +354,7 @@ def plot_roc(targets, y_hat,
     plt.legend(loc="lower right", fontsize=11)
     fig.tight_layout()
     plt.savefig("ROC.png")
-    
+# ----------------------------------------------------------------
 class IceCubeAdjacencyMatrix(nn.Module):
     '''
     Given a set of vertices V, compute the IceCube adjacency matrix of shape (n, n).
@@ -363,5 +386,184 @@ class IceCubeAdjacencyMatrix(nn.Module):
         # 3. apply softmax in "horizontal" direction.
         A = torch.softmax(A, dim=-1)
         return A
-        
-        
+# ----------------------------------------------------------------
+# PyTorch Geometric utilities
+# ----------------------------------------------------------------
+def edge_weights(nodes, edge_index,
+                 alpha=1,
+                 ieta=1,
+                 iphi=2,
+                 debug=False):
+    '''
+    Compute weights between two particles separated by deltaR in
+    (eta, phi)-space.
+
+    nodes      : tensor[number of particles, number of features] - nodes...duh!
+    edge_index : tensor[2, number of edges] - indices of edges (i, j)
+                 i = edge_index[0] - target node indices
+                 j = edge_index[1] - source node indices
+    alpha      : float - Scale defining size of particle neighborhood
+
+    ieta       : int - Feature index of eta [1]
+    iphi       : int - Feature index of phi [2]
+    '''
+
+    # 1. Compute dR**2 between all pairs of particles
+    dR2 = delta_Rsquared(nodes, edge_index, ieta, iphi).to(nodes.device)
+
+    # 2. Compute unnormalized edge weights exp(-alpha * dR**2)
+    weights = torch.exp(-alpha * dR2).to(nodes.device)
+
+    # 3. Normalize weights for each target node
+    trg_nodes, src_nodes = edge_index
+    weights = softmax(weights, trg_nodes)
+
+    if debug:
+        print('\tnormalized edge weights')
+        num_nodes = len(nodes)
+        from copy import copy
+        wgt = copy(weights)
+        for k in range(num_nodes):
+            start= k * num_nodes
+            end  = start + num_nodes
+            wgt[start:end] /= wgt[start:end].sum()
+            wsum = wgt[start:end].sum()
+            wgt[start:end] /= wsum
+
+        for k, (i, j) in enumerate(zip(trg_nodes, src_nodes)):
+            print(f'{i:4d}, {j:4d}\t{weights[k]:8.4f}\t{wgt[k]:8.4f}')
+            if k > 49:
+                break
+        print()
+
+    return weights
+
+class FullConnection(nn.Module):
+    def __init__(self, self_loops=True):
+        super().__init__()
+        self.self_loops = self_loops
+
+    def forward(self, nodes):
+        '''
+        Given tensor nodes[n_nodes, n_features] construct all
+        possible edge connections, modeled as a two 2D tensor
+        edge_index of shape (2, n_edges).
+
+          I = edge_index[0] - target node indices
+          J = edge_index[1] - source node indices
+        '''
+        num_nodes = len(nodes) # number of nodes
+
+        # I = 0, 1, ... num_nodes - 1
+        I = np.arange(0, num_nodes, 1)
+
+        # create a numpy array of all possible tuples (i, j)
+        I, J = np.meshgrid(I, I)
+        J, I = np.stack((I, J), axis=2).reshape(-1, 2).T
+
+        if not self.self_loops:
+            # exclude pairs with i = j
+            keep = J != I
+            I = I[keep]
+            J = J[keep]
+
+        # create a tensor of shape [2, n_edges]
+        return torch.tensor(np.array([I, J]), dtype=torch.long) 
+
+class GraphDataset(list):
+
+    def __init__(self, data, start, end,
+                 targets=None,
+                 random_sample_size=None,
+                 connection=FullConnection(),  # define node connectivity
+                 device=torch.device('cuda'
+                                     if torch.cuda.is_available() else 'cpu'),
+                 verbose=1):
+        '''
+    Create a dataset comprising graphs with potentially differing numbers
+    of nodes. The input data and targets are converted to tensors.
+
+    data: list[np.arrays]    Node data
+    start, end : int         start and end of tensor
+    targets : np.array       Target(s) associated with each element of data
+    random_sample_size : int If specified, select a random sample from data
+                             of size random_sample_size within given range.
+    connection : function    Given a tensor x[n_nodes, n_features] of nodes,
+                             this function should return a tensor of shape
+                             [2, n_edges] specifying which target nodes and
+                             source nodes are connected.
+                             [default: FullConnection()]
+    device : device-type
+    verbose : int
+        '''
+        import numpy
+
+        super().__init__()
+
+        self.has_targets = type(targets) != type(None)
+
+        # check data type
+        if not isinstance(data[0], numpy.ndarray):
+            raise TypeError("data should be a list of numpy arrays")
+
+        if self.has_targets:
+            if not isinstance(targets, numpy.ndarray):
+                raise TypeError("targets should be a numpy array")
+
+        self.connection = connection
+        self.device = device
+        self.verbose = verbose
+
+        y = None
+        if random_sample_size == None:
+            x = data[start:end]
+            if self.has_targets:
+                y = targets[start:end]
+        else:
+            # create a random sample from items in the specified
+            # range (start, end)
+            assert(type(random_sample_size) == type(0))
+
+            length  = end - start
+            assert(length > 0)
+
+            # we have a list of possibly inhomogeous arrays
+            indices = torch.randint(start, end-1, size=(random_sample_size,))
+            x = [data[i] for i in indices]
+            if self.has_targets:
+                y = targets[indices]
+
+        # convert to tensors, cache data and
+        # send to computational device
+        self.x = [torch.tensor(z).to(device) for z in x]
+        if self.has_targets:
+            self.y = torch.tensor(y).to(device)
+
+        dataset = self.__build_graphs()
+
+        # NB: remember to initialize the list
+        super().__init__(dataset)
+
+        if verbose:
+            print('Dataset')
+            try:
+                print(f"  shape of x: {self.x.shape}")
+                if self.has_targets:
+                    print(f"  shape of y: {self.y.shape}")
+            except:
+                print(f"  shape of x: {len(self.x)}")
+                if self.has_targets:
+                    print(f"  shape of y: {len(self.y)}")
+            print()
+
+    def __build_graphs(self):
+        # build list of graphs, each modeled with the PyG class Data
+        device = self.x[0].device
+        dataset = []
+        for i in tqdm(range(len(self.x))):
+            dataset.append(
+                Data(x=self.x[i],
+                     edge_index=self.connection(self.x[i]).to(device),
+                     y=torch.Tensor([self.y[i]]))
+            )
+        return dataset
