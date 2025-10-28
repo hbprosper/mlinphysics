@@ -29,9 +29,6 @@ x,a,b,c,d,f,g = symbols('x,a,b,c,d,f,g', real=True)
 def print_shape(a, x):
     print(f'{a:s}: {str(x.shape):s}')
     
-def number_of_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
 # pretty print symbolic expression
 def pprint(expr):
     try:
