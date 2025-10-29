@@ -1,5 +1,10 @@
 # Used in GNN and GAE tutorials
 # ----------------------------------------------------------------
+CHECK = "\u2705"
+FAIL  = "\u274C"
+WARN  = "\u26A0"
+SM, SIG = -1, 1
+# ----------------------------------------------------------------
 import os, sys
 import numpy as np
 
@@ -37,12 +42,7 @@ except:
 import networkx as nx
 
 from tqdm import tqdm
-# ----------------------------------------------------------------
-CHECK = "\u2705"
-FAIL  = "\u274C"
-WARN  = "\u26A0"
-SM, SIG = -1, 1
-# ----------------------------------------------------------------
+
 def delta_phi(phi2, phi1):
     '''
     Compute the difference in phi accounting for wraparound.
