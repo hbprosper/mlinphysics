@@ -9,4 +9,5 @@
 | 06.GNN      | graph neural network (GNN) |
 | 07.AE  | autoencoder (AE) and convolutional autoencoder (CAE)  |
 | 08.NFlow_DModel       | normalization flows and diffusion models |
+| 09.GAE | PyTorch Geometric and graph autoencoders |
 | 10.Transformer | transformers |
