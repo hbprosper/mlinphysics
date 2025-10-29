@@ -52,10 +52,12 @@ def initialize_model(model, paramsfile):
                                      map_location=torch.device('cpu')))
     model.eval()
 
-def initialize_parameters(m):
-    if isinstance(m, nn.Linear):
-        nn.init.xavier_normal_(m.weight)
-        nn.init.zeros_(m.bias)
+def initialize_parameters(model):
+    for param in model.parameters(): 
+        if param.requires_grad:
+            if isinstance(param, nn.Linear):
+                nn.init.xavier_normal_(param.weight)
+                nn.init.zeros_(param.bias)
 
 # This function assumes that the len(loader) is the same as
 # the batch size given when the loader is instantiated
