@@ -95,7 +95,7 @@ Install __git__ if it is not yet on your system, then download the **mlinphysics
 	cd mlinphysics
 	pip install -e .
 ```
-In the above the GitHub package *mlinphysics* has been downloaded into a directory called *tutorials*.
+In the above the GitHub package *mlinphysics* has been downloaded into a directory called *tutorials* and installed so that it is available from any other folder on your machine.
 
 #### Step 5
 
@@ -106,7 +106,7 @@ Open a new terminal window, navigate to the folder (directory) that contains **m
 If all goes well, the jupyter lab environment will appear in your default browser. 
 Navigate to the *mlinphysics* folder and under the *Files* menu item, click on the notebook *test.ipynb* and execute it. This notebook tries to import several Python modules. If it does so without error messages, you are ready to try out the other notebooks.
 
-In general, it is better to work in another folder and to copy the pieces of *milinphysics* you wish to work with. That way you avoid conflicts if you need to update *mlinphysics* by navigating to that folder and doing 
+In general, it is better to work in another folder and to copy the pieces of *mlinphysics* you wish to work with. That way you avoid conflicts if you need to update *mlinphysics* by navigating to that folder and doing 
 ```bash
 	git pull
 ```
