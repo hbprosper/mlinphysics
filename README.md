@@ -92,6 +92,8 @@ Install __git__ if it is not yet on your system, then download the **mlinphysics
 	mkdir tutorials
 	cd tutorials
 	git clone https://github.com/hbprosper/mlinphysics
+	cd mlinphysics
+	pip install -e .
 ```
 In the above the GitHub package *mlinphysics* has been downloaded into a directory called *tutorials*.
 
