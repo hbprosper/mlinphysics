@@ -26,7 +26,11 @@ try:
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
     from torch_geometric.utils import scatter, softmax, subgraph
+    PYG_NOT_AVAILABLE = False
 except:
+    PYG_NOT_AVAILABLE = True
+
+def PYG_WARN():
     print(f'''
 {WARN}: PyTorch Geometric is needed!
 
@@ -407,7 +411,9 @@ def edge_weights(nodes, edge_index,
     ieta       : int - Feature index of eta [1]
     iphi       : int - Feature index of phi [2]
     '''
-
+    if PYG_NOT_AVAILABLE:
+        raise ModuleNotFoundError(PYG_WARN())
+    
     # 1. Compute dR**2 between all pairs of particles
     dR2 = delta_Rsquared(nodes, edge_index, ieta, iphi).to(nodes.device)
 
@@ -497,6 +503,9 @@ class GraphDataset(list):
     verbose : int
         '''
         import numpy
+        
+        if PYG_NOT_AVAILABLE:
+            raise ModuleNotFoundError(PYG_WARN())
 
         super().__init__()
 
