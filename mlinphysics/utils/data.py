@@ -13,6 +13,39 @@ import torch.nn as nn
 import torch.utils.data as td
 import scipy.stats as st
 # ----------------------------------------------------------------------------
+def download(datafile, 
+             website='http://www.hep.fsu.edu/~harry/datasets',
+             timeout=10):
+    import requests
+    
+    if os.path.exists(datafile):
+        return
+        
+    dirname, filename = os.path.split(datafile)
+    dirname = os.path.abspath(dirname)
+    cwd     = os.path.abspath(os.getcwd())
+    os.chdir(dirname)
+
+    url = f'{website}/{filename}'
+
+    try:
+        response = requests.get(url, timeout=timeout)  # seconds
+        response.raise_for_status()  # raises HTTPError if status >= 400
+        with open(filename, "wb") as f:
+            f.write(response.content)
+        print("✅ Download succeeded.")
+        print(os.listdir())
+    except requests.exceptions.HTTPError as e:
+        print("❌ HTTP error:", e)
+    except requests.exceptions.ConnectionError:
+        print("❌ Failed to connect (check URL or network).")
+    except requests.exceptions.Timeout:
+        print("❌ Request timed out.")
+    except Exception as e:
+        print("❌ Other error:", e)
+
+    os.chdir(cwd)
+# ----------------------------------------------------------------------------
 # Using a Sobol sequence to created a sample of points
 # ----------------------------------------------------------------------------
 class SobolSample(np.ndarray):
