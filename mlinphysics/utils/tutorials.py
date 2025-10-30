@@ -316,7 +316,7 @@ def histogram_classifier_outputs(targets, y_hat,
 
     # setup axes
     ax.set_xlim(xmin, xmax)
-    ax.set_xlabel(r'$\\hat{y} = D(G)$', fontsize=ftsize)
+    ax.set_xlabel('$y = D(G)$', fontsize=ftsize)
     ax.set_ylabel('density($y$)', fontsize=ftsize)
 
     cs, _, _ = ax.hist(s, bins=xbins, range=(xmin, xmax), 
@@ -347,8 +347,8 @@ def plot_roc(targets, y_hat,
 
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.0])
-    plt.xlabel('$P(\\hat{y} > y | B)$', fontsize=14)
-    plt.ylabel('$P(\\hat{y} > y | S)$', fontsize=14)
+    plt.xlabel('$P(Y > y | B)$', fontsize=14)
+    plt.ylabel('$P(Y > y | S)$', fontsize=14)
 
     plt.plot(bkg, sig, color='red',
              lw=1, label='ROC curve, AUC = %0.2f)' % roc_auc)
