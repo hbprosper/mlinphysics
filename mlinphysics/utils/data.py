@@ -113,25 +113,21 @@ class Dataset(td.Dataset):
 
         # store_as_tensor will be false if data is a list of tensors
         try:
-            tmp = torch.Tensor(data[start:end])
+            tmp = torch.tensor(data[start:end])
             self.store_as_tensor = True
         except:
             self.store_as_tensor = False
 
         y = None
         if random_sample_size == None:
-
             if self.store_as_tensor:
-                x = torch.Tensor(data[start:end])
+                x = torch.tensor(data[start:end])
             else:
                 # assume we have a list of possibly inhomogeneous tensors
                 x = data[start:end]
 
             if has_targets:
-                if targets.dtype == int:
-                    y = torch.tensor(targets[start:end])
-                else:
-                    y = torch.Tensor(targets[start:end])
+                y = torch.tensor(targets[start:end])
         else:
             # create a random sample from items in the specified range (start, end)
             assert(type(random_sample_size) == type(0))
@@ -142,16 +138,13 @@ class Dataset(td.Dataset):
             indices = torch.randint(start, end-1,
                                         size=(random_sample_size,))
             if self.store_as_tensor:
-                x = torch.Tensor(data[indices])
+                x = torch.tensor(data[indices])
             else:
                 # assume we have a list of possibly inhomogeous tensors
                 x = [data[i] for i in indices]
 
             if has_targets:
-                if targets.dtype == int:
-                    y = torch.tensor(targets[indices])
-                else:
-                    y = torch.Tensor(targets[indices])
+                y = torch.tensor(targets[indices])
 
         # perhaps we should split?
         if split_data:

@@ -1,12 +1,6 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Some Seq2Seq Utilities
-
-# In[2]:
-
-
-import re
+# Used in transformer tutorials
+# ----------------------------------------------------------------
+import os, sys, re
 import numpy as np
 import random as rn
 import torch
@@ -21,11 +15,36 @@ from sympy import symbols, sympify, exp, \
     cos, sin, tan, \
     cosh, sinh, tanh, ln, log, E, O
 x,a,b,c,d,f,g = symbols('x,a,b,c,d,f,g', real=True)
-
-
-# In[16]:
-
-
+# ---------------------------------------------------------------
+CONFIG = [
+    'SRC_VOCAB_SIZE',
+    'SRC_SEQ_LEN',
+    'ENC_EMB_DIM', 
+    'ENC_LAYERS', 
+    'ENC_HEADS', 
+    'ENC_FF_DIM', 
+    'ENC_DROPOUT', 
+    'TRG_VOCAB_SIZE',
+    'TRG_SEQ_LEN',
+    'DEC_EMB_DIM', 
+    'DEC_LAYERS', 
+    'DEC_HEADS', 
+    'DEC_FF_DIM', 
+    'DEC_DROPOUT', 
+    'PAD_CODE',
+    'SOS_CODE',
+    'EOS_CODE'
+]
+def config_complete(config, keys=CONFIG):
+    for key in keys:
+        try:
+            y = config(key)
+        except:
+            sys.exit(f'''❌
+    Required configuration parameter, {key}, missing from configuration object!
+    please check!
+            ''')
+    
 def print_shape(a, x):
     print(f'{a:s}: {str(x.shape):s}')
     
@@ -36,45 +55,23 @@ def pprint(expr):
     except:
         print(expr)
 
+def stringify(codes, code2token):
+    return ''.join([code2token[int(x)] for x in codes])
+# ---------------------------------------------------------------
+# build a simple tokenizer
+# ---------------------------------------------------------------
 # regular expression (regex) to extract tokens
 get_tokens = re.compile('O[(]x[*][*]6[)]|[*][*]|[*]|[+]|[-]|[/]|'\
                         '[(]|[)]|[1-9][.]0|[0-9]|[a-zA-Z]+')
 
-# given a list of strings, extract list of tokens
-def build_vocabulary(text):
-    
-    tokens = set(['0','1','2','3','4','5','6','7','8','9'])
-
-    for ii, line in enumerate(text):
-        token  = set(get_tokens.findall(line))
-        tokens = tokens.union(token)
-
-    tokens = list(tokens)
-    tokens.sort()
-    
-    # ensure that PAD, SOS, and EOS symbols will always have codes 0, 1, 2
-    
-    tokens.insert(0, '<eos>') # end of sequence (EOS) symbol
-    tokens.insert(0, '<sos>') # start of sequence (SOS) symbol
-    tokens.insert(0, '<pad>') # padding (PAD) symbol   
-
-    # token to code map (it seems that we need to start from code 0)
-    
-    codes      = np.arange(len(tokens))
-    token2code = dict(zip(tokens, codes))
-    code2token = dict(zip(codes, tokens))
-    
-    return tokens, token2code, code2token
-
 # split string "line" into tokens
-
 def tokenize(line):
     line_orig = line
     
     findall = get_tokens.findall
     # 1. get a unique list of tokens from string "line" and sort in
     #    decreasing length of token so that longest tokens, like "sinh",
-    #    are searched for before, for example, "sin"
+    #    are searched before shorter tokens like "sin"
     tokens  = [(len(x), x) for x in list(set(findall(line)))]
     tokens.sort()
     tokens.reverse()
@@ -113,11 +110,35 @@ def tokenize(line):
             raise ValueError(f'token not found:<<{line:s}>>')
 
     return tokens
-        
-def stringify(codes, code2token):
-    return ''.join([code2token[int(x)] for x in codes])
 
-def text2codes(text, token2code, step=2000):
+# ---------------------------------------------------------------
+# given a list of strings, build a token dictionary
+# ---------------------------------------------------------------
+def build_vocabulary(text, tokenize):
+    
+    tokens = set(['0','1','2','3','4','5','6','7','8','9'])
+    for ii, line in enumerate(text):
+        token_set = set(tokenize(line))
+        tokens = tokens.union(token_set)
+
+    tokens = list(tokens)
+    tokens.sort()
+    
+    # ensure that PAD, SOS, and EOS symbols will always have codes 0, 1, 2
+    tokens.insert(0, '<eos>') # end of sequence (EOS) symbol
+    tokens.insert(0, '<sos>') # start of sequence (SOS) symbol
+    tokens.insert(0, '<pad>') # padding (PAD) symbol   
+
+    # token to code map (it seems that we need to start from code 0)
+    codes      = np.arange(len(tokens)).tolist()
+    token2code = dict(zip(tokens, codes))
+    code2token = dict(zip(codes, tokens))
+    
+    return tokens, token2code, code2token
+# ---------------------------------------------------------------
+# map tokens to codes
+# ---------------------------------------------------------------
+def text2codes(text, token2code, tokenize, step=2000):
     
     max_len = 0    # maximum length of token sequences
     avg_len = 0.0  # sum len_i
@@ -155,22 +176,25 @@ def text2codes(text, token2code, step=2000):
     std_len  = int(std_len+0.5)
     
     return codes, avg_len, std_len, max_len
-
-
-# In[17]:
-
-
+# ----------------------------------------------------------------
 class DataLoader:
     
-    def __init__(self, filename, delimit,
-                 max_seq_len=192, 
-                 batch_size=128,
+    def __init__(self, filename, delimit, 
+                 src_tokenize=tokenize,
+                 trg_tokenize=tokenize,
+                 max_seq_len=256, 
+                 batch_size=64,
                  ftrain=18/20, # fraction of data devoted to training
                  fvalid=1/20,  # fraction of data devoted to validation
                  ftest=1/20,   # fraction of data devoted to testing              
                  device="cuda" if torch.cuda.is_available() else "cpu"):  
         
         max_seq_len -= 2
+
+        # cache tokenizers
+        
+        self.src_tokenize = src_tokenize
+        self.tgt_tokenize = trg_tokenize
         
         # cache computational device (CPU or GPU)
         
@@ -181,34 +205,34 @@ class DataLoader:
         print('read sequences')
         
         text = open(filename).readlines()
-    
         data = [x.strip().split(delimit) for x in text]
-
-        step = int(len(data)/3)
+        print(f'\n\tnumber of sequence pairs: {len(data)}\n')
         
-        # plot a few source/target pairs
-        for i, (src, tgt) in enumerate(data):
-            
+        # print a few source/target pairs
+        step = int(len(data)/3)
+        for i, (src, trg) in enumerate(data):
             if i % step == 0:
                 print(f'{i:6d} {"-"*83:s}')
                 pprint(src)
-                pprint(tgt)
+                pprint(trg)
         print()
     
         # unzip into a list of sources and a list of targets
         
         srcs, tgts = zip(*data)
-        
+
+        # ---------------------------------------------------------------
         # build source vocabulary
-        
-        src_tokens, self.src_token2code, self.src_code2token = build_vocabulary(srcs)
+        # ---------------------------------------------------------------      
+        src_tokens, self.src_token2code, self.src_code2token = build_vocabulary(srcs, self.src_tokenize)
         print('source vocabulary')
         print(self.src_token2code)
         print()
-        
+
+        # ---------------------------------------------------------------
         # build target vocabulary
-        
-        tgt_tokens, self.tgt_token2code, self.tgt_code2token = build_vocabulary(tgts)
+        # ---------------------------------------------------------------     
+        tgt_tokens, self.tgt_token2code, self.tgt_code2token = build_vocabulary(tgts, self.tgt_tokenize)
         print('target vocabulary')
         print(self.tgt_token2code)
         print()
@@ -220,16 +244,16 @@ class DataLoader:
         
         # tokenize source sequences and map to integer codes
         
-        srcs, avg_len, std_len, max_src_len = text2codes(srcs, self.src_token2code)
+        srcs, avg_len, std_len, max_src_len = text2codes(srcs, self.src_token2code, self.src_tokenize)
         self.SRC_AVG_SEQ_LEN = avg_len
         self.SRC_STD_SEQ_LEN = std_len
         src_seq_len          = min(avg_len + 3 * std_len, max_src_len, max_seq_len)
         
         # tokenize target sequences and map to integer codes
         
-        tgts, avg_len, std_len, max_tgt_len = text2codes(tgts, self.tgt_token2code)
-        self.TGT_AVG_SEQ_LEN = avg_len
-        self.TGT_STD_SEQ_LEN = std_len
+        tgts, avg_len, std_len, max_tgt_len = text2codes(tgts, self.tgt_token2code, self.tgt_tokenize)
+        self.TRG_AVG_SEQ_LEN = avg_len
+        self.TRG_STD_SEQ_LEN = std_len
         tgt_seq_len          = min(avg_len + 3 * std_len, max_tgt_len, max_seq_len)
 
         # filter sequences
@@ -325,8 +349,8 @@ class DataLoader:
         self.SRC_SEQ_LEN     = len(self.train_data[0][0])
         self.SRC_VOCAB_SIZE  = len(self.src_token2code)
         
-        self.TGT_SEQ_LEN     = len(self.train_data[1][0])
-        self.TGT_VOCAB_SIZE  = len(self.tgt_token2code)
+        self.TRG_SEQ_LEN     = len(self.train_data[1][0])
+        self.TRG_VOCAB_SIZE  = len(self.tgt_token2code)
 
         print(f'avg. source sequence length: {self.SRC_AVG_SEQ_LEN:8d}')
         print(f'std. source sequence length: {self.SRC_STD_SEQ_LEN:8d}')
@@ -334,10 +358,10 @@ class DataLoader:
         print(f'     source vocabulary size: {self.SRC_VOCAB_SIZE:8d}')
         print()
         
-        print(f'avg. target sequence length: {self.TGT_AVG_SEQ_LEN:8d}')
-        print(f'std. target sequence length: {self.TGT_STD_SEQ_LEN:8d}')
-        print(f'     target sequence length: {self.TGT_SEQ_LEN:8d}')
-        print(f'     target vocabulary size: {self.TGT_VOCAB_SIZE:8d}')
+        print(f'avg. target sequence length: {self.TRG_AVG_SEQ_LEN:8d}')
+        print(f'std. target sequence length: {self.TRG_STD_SEQ_LEN:8d}')
+        print(f'     target sequence length: {self.TRG_SEQ_LEN:8d}')
+        print(f'     target vocabulary size: {self.TRG_VOCAB_SIZE:8d}')
         print()
 
         # convert to tensors and load onto computational device
@@ -419,7 +443,7 @@ class DataLoader:
         
         if self.index < self.num_batches:
            
-            batch    = Batch()
+            batch = Batch()
             src, trg = self.data
            
             i = self.index * self.batch_size
@@ -441,5 +465,133 @@ class DataLoader:
     def data_splits(self):
         return self.train_data, self.valid_data, self.test_data
 
+# ----------------------------------------------------------------
+class SequenceData:
+    
+    def __init__(self, filename, 
+                 max_seq_len=128,
+                 delimit='|', 
+                 src_tokenize=tokenize,
+                 trg_tokenize=tokenize):  
+        
+        max_seq_len -= 2
+
+        # cache tokenizers
+        self.src_tokenize = src_tokenize
+        self.trg_tokenize = trg_tokenize
+        
+        # ---------------------------------------------------------------      
+        # read and split data into a list of 2-tuples
+        # ---------------------------------------------------------------
+        print('\treading sequences')
+        try:
+            text = open(filename).readlines()
+        except:
+            sys.exit(f'''❌
+    Sequence data file {filename} NOT found!
+            ''')
+        print(f'\n\tsample size: {len(text)}\n')
+
+        # unzip into a list of sources and a list of targets
+        data = [x.strip().split(delimit) for x in text]
+        for i, d in enumerate(data):
+            if len(d) != 2:
+                sys.exit(f'''❌
+    Unable to split sequence at line {i} into source and target sequences
+    using the delimiter {delimit}. Please check the file {filename}.
+                ''')
+        srcs, trgs = zip(*data)
+        
+        # print a few source/target pairs
+        step = int(len(data)/1500)
+        step = 500 * step
+        for i in range(0, len(srcs), step):    
+            print(f'{i}')
+            pprint(srcs[i])
+            pprint(trgs[i])
+            print()
+
+        # ---------------------------------------------------------------
+        # build source vocabulary
+        # ---------------------------------------------------------------  
+        print('\tbuilding source vocabulary')
+        src_tokens, self.src_token2code, self.src_code2token = build_vocabulary(srcs, self.src_tokenize)
+        print(self.src_token2code)
+        print()
+
+        # ---------------------------------------------------------------
+        # build target vocabulary
+        # ---------------------------------------------------------------   
+        print('\tbuilding target vocabulary')
+        trg_tokens, self.trg_token2code, self.trg_code2token = build_vocabulary(trgs, self.trg_tokenize)
+        print(self.trg_token2code)
+        print()
+    
+        # ---------------------------------------------------------------
+        # tokenize sequences and map to integer codes
+        # ---------------------------------------------------------------
+        
+        # tokenize source sequences and map to integer codes
+        
+        print('\ttokenize sources')
+        srcs, avg_len, std_len, max_src_len = text2codes(srcs, self.src_token2code, self.src_tokenize)
+        self.SRC_AVG_SEQ_LEN = avg_len
+        self.SRC_STD_SEQ_LEN = std_len
+        src_seq_len          = min(avg_len + 3 * std_len, max_src_len, max_seq_len)
+        
+        # tokenize target sequences and map to integer codes
+        
+        print('\ttokenize targets')
+        trgs, avg_len, std_len, max_trg_len = text2codes(trgs, self.trg_token2code, self.trg_tokenize)
+        self.TRG_AVG_SEQ_LEN = avg_len
+        self.TRG_STD_SEQ_LEN = std_len
+        trg_seq_len          = min(avg_len + 3 * std_len, max_trg_len, max_seq_len)
+
+        # filter sequences
+
+        seqs = filter(lambda x: len(x[0]) <= src_seq_len and len(x[1]) <= trg_seq_len, zip(srcs, trgs))
+        srcs, trgs = zip(*seqs)
+        srcs = list(srcs) # need to be lists so that they are mutable
+        trgs = list(trgs)
+        
+        # ---------------------------------------------------------------
+        # pad and bracket sequences. the codes for PAD, SOS, and EOS are
+        # the same for source and target sequences.
+        # ---------------------------------------------------------------
+        PAD = self.src_token2code['<pad>']
+        SOS = self.src_token2code['<sos>']
+        EOS = self.src_token2code['<eos>']
+
+        self.PAD = PAD
+        self.SOS = SOS
+        self.EOS = EOS
+        
+        # pad and bracket data
+        
+        print('\tpad sequences and bracket with <sos> and <eos>')
+        for i, (src, trg) in enumerate(zip(srcs, trgs)): 
+            srcs[i] = [SOS] + src + (src_seq_len-len(src))*[PAD] + [EOS]
+            trgs[i] = [SOS] + trg + (trg_seq_len-len(trg))*[PAD] + [EOS]
+
+        # convert to numpy arrays and cache
+        self.sources = np.array(srcs, dtype=np.int64)
+        self.targets = np.array(trgs, dtype=np.int64)
+
+        # print a summary
+        self.SRC_SEQ_LEN     = len(srcs[0])
+        self.SRC_VOCAB_SIZE  = len(self.src_token2code)
+        
+        self.TRG_SEQ_LEN     = len(trgs[0])
+        self.TRG_VOCAB_SIZE  = len(self.trg_token2code)
+
+        print()
+        print('Summary')
+        print(f' sample size: {len(self.sources)}')
+        print(f'   source sequence length: {self.SRC_SEQ_LEN:8d}')
+        print(f'   source vocabulary size: {self.SRC_VOCAB_SIZE:8d}')
+        print()
+        print(f'   target sequence length: {self.TRG_SEQ_LEN:8d}')
+        print(f'   target vocabulary size: {self.TRG_VOCAB_SIZE:8d}')
+        print()
 
 
