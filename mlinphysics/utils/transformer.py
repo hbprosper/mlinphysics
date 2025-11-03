@@ -56,7 +56,7 @@ def pprint(expr):
         print(expr)
 
 def stringify(codes, code2token):
-    return ''.join([code2token[int(x)] for x in codes])
+    return ''.join([code2token[int(x)] for x in codes]).replace('<pad>', '')
 # ---------------------------------------------------------------
 # build a simple tokenizer
 # ---------------------------------------------------------------
