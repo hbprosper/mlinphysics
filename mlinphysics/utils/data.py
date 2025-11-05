@@ -60,7 +60,8 @@ class SobolSample(np.ndarray):
         sampler = st.qmc.Sobol(d=D, scramble=True)
         sample  = sampler.random_base2(m=num_points_exp) 
         sample  = st.qmc.scale(sample, lower_bounds, upper_bounds)
-
+        sample  = sample.astype(np.float32)
+        
         if verbose:
             print("SobolSample")
             print(f"  {2**num_points_exp} Sobol points created in unit {D}-cube.")
@@ -82,6 +83,7 @@ class UniformSample(np.ndarray):
         D = len(lower_bounds)
         sample = np.random.uniform(0, 1, D*num_points).reshape((num_points, D))
         sample = st.qmc.scale(sample, lower_bounds, upper_bounds)
+        sample = sample.astype(np.float32)
         
         if verbose:
             print("UniformSample")
