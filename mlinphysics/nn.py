@@ -170,16 +170,13 @@ class ResNet(nn.Module):
     '''
     ResNet(n_input : int, n_width : int)
     '''
-    def __init__(self, n_input, n_width, f_hidden=nn.SiLU()):
+    def __init__(self, n_input, n_width, f_hidden=Sin()):
         # remember to initialize base (that is, parent) class
         super().__init__()
-        self.lin2 = nn.Sequential(nn.Linear(n_input, n_width), f_hidden,
-                                  nn.Linear(n_width, n_input), f_hidden
-                               )
-        self.shortcut = nn.Sequential()
-        
+        self.net = nn.Sequential(nn.Linear(n_input, n_width), f_hidden,
+                                 nn.Linear(n_width, n_input), f_hidden)
     def forward(self, x):
-        return self.lin2(x) + self.shortcut(x)
+        return self.net(x) + x
 
 class FCNN(Model):
     '''
