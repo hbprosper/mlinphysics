@@ -13,6 +13,10 @@ import torch.nn as nn
 import torch.utils.data as td
 import scipy.stats as st
 # ----------------------------------------------------------------------------
+CHECK = "\u2705"
+FAIL  = "\u274C"
+WARN  = "\u26A0"
+# ----------------------------------------------------------------------------
 def download(datafile, 
              website='http://www.hep.fsu.edu/~harry/datasets',
              timeout=10):

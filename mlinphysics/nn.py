@@ -131,6 +131,19 @@ def plot_loss_curve(losses):
 # ----------------------------------------------------------------------------
 # Classes 
 # ----------------------------------------------------------------------------
+class ExponentialLoss(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, f, y):
+        """
+        outputs:  shape (batch_size, 1)
+        targets:  shape (batch_size, 1)
+        """
+        losses = torch.exp( -0.5 * y * f)
+        return torch.mean(losses)
+
 class Model(nn.Module):
     
     def __init__(self): 
