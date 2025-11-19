@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import time
 import matplotlib as mp
-
 def find_blocking_backend(candidates=("QtAgg", "TkAgg", "MacOSX", "Qt5Agg")):
     for backend in candidates:
         try:
@@ -18,10 +17,6 @@ def find_blocking_backend(candidates=("QtAgg", "TkAgg", "MacOSX", "Qt5Agg")):
         except:
             pass
     print("Sorry, no usable blocking GUI backend available on your system!")
-
-find_blocking_backend()
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 #------------------------------------------------------------------------------
 DELAY = 5 # seconds - interval between plot updates
 LOG_SWITCH = 3
@@ -124,13 +119,16 @@ class TimeLeft:
     def __str__(self):
         return self.a_str
 #--------------------------------------------------------------------
-class Monitor:
+class Monitor:    
     '''    
     monitor = Monitor()
         :   :
     monitor()
     '''
     def __init__(self, loss_file):
+        find_blocking_backend()
+        import matplotlib.pyplot as plt
+        
         self.loss_file = loss_file
         self.timeleft_file = '.timeleft'
         
@@ -182,6 +180,7 @@ class Monitor:
         fig.tight_layout()
         
     def __call__(self):
+        from matplotlib.animation import FuncAnimation
         return FuncAnimation(fig=self.fig, 
                                  func=self.plot, 
                                  interval=1000*DELAY, # milliseconds
