@@ -22,11 +22,7 @@ def main():
     ''')
         
     loss_file = argv[0]
-    
     monitor = mon.Monitor(loss_file)
-    anim = monitor()
-
-    print(f'loss file: {loss_file}')
-    
+    anim = monitor()    
     plt.show()
 
