@@ -6,28 +6,27 @@
 # Aug  2025 HBP use mlinphysics
 #------------------------------------------------------------------------------
 import os, sys
+import matplotlib.pyplot as plt
 import mlinphysics.utils.monitor as mon
 #------------------------------------------------------------------------------
+anim = None
 def main():
+    global anim
     # get name of loss file
     argv = sys.argv[1:]
     argc = len(argv)
     if argc < 1:
         sys.exit('''
         Usage:
-           monitor_losses loss-file
+           monlosses loss-file
     ''')
         
     loss_file = argv[0]
-    print()
-    print('loss file:', loss_file)
-
-    monitor = mon.Monitor(loss_file)
     
-    monitor()
-#------------------------------------------------------------------------------
-#try:
-#    main()
-#except KeyboardInterrupt:
-#    print('\nciao!\n')
+    monitor = mon.Monitor(loss_file)
+    anim = monitor()
+
+    print(f'loss file: {loss_file}')
+    
+    plt.show()
 

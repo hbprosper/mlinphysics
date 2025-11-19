@@ -7,10 +7,23 @@ import os, sys, re
 import numpy as np
 import pandas as pd
 import time
+import matplotlib as mp
+
+def find_blocking_backend(candidates=("QtAgg", "TkAgg", "MacOSX", "Qt5Agg")):
+    for backend in candidates:
+        try:
+            mp.use(backend, force=True)
+            print(f'using GUI backend: {backend}')
+            return
+        except:
+            pass
+    print("Sorry, no usable blocking GUI backend available on your system!")
+
+find_blocking_backend()
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 #------------------------------------------------------------------------------
-DELAY = 10 # seconds - interval between plot updates
+DELAY = 5 # seconds - interval between plot updates
 LOG_SWITCH = 3
 #------------------------------------------------------------------------------
 # The loss file should be a simple text file with olumns of numbers:
@@ -122,7 +135,7 @@ class Monitor:
         self.timeleft_file = '.timeleft'
         
         # set up an empty figure
-        self.fig = plt.figure(figsize=(6, 4))
+        self.fig = plt.figure(figsize=(8, 4))
         self.fig.suptitle(loss_file)
 
         # add a subplot to it
@@ -168,13 +181,12 @@ class Monitor:
                 
         fig.tight_layout()
         
-    def __call__(self):        
-        self.ani = FuncAnimation(fig=self.fig, 
+    def __call__(self):
+        return FuncAnimation(fig=self.fig, 
                                  func=self.plot, 
                                  interval=1000*DELAY, # milliseconds
                                  repeat=False, 
                                  cache_frame_data=False)
-        plt.show()
 #--------------------------------------------------------------------
 class LossWriter:
     '''
