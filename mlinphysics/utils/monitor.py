@@ -187,12 +187,12 @@ class Monitor:
                                  repeat=False, 
                                  cache_frame_data=False)
 
-    def show(self):
-        # realtime monitoring
-        import subprocess
-        self.p = subprocess.Popen(["monlosses", self.loss_file],
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.DEVNULL)
+def monlosses(loss_file):
+    # realtime monitoring
+    import subprocess
+    self.p = subprocess.Popen(["monlosses", loss_file],
+                     stdout=subprocess.PIPE,
+                     stderr=subprocess.DEVNULL)
 #--------------------------------------------------------------------
 class LossWriter:
     '''
