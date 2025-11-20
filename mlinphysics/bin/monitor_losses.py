@@ -22,7 +22,8 @@ def main():
     ''')
         
     loss_file = argv[0]
-    monitor = mon.Monitor(loss_file)
+    monitor = mon.Monitor(loss_file, init_fig=True)
     anim = monitor()    
     plt.show()
+
 

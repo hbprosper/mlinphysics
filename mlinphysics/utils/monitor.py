@@ -8,18 +8,12 @@ import numpy as np
 import pandas as pd
 import time
 import matplotlib as mp
-def find_blocking_backend(candidates=("QtAgg", "TkAgg", "MacOSX", "Qt5Agg")):
-    for backend in candidates:
-        try:
-            mp.use(backend, force=True)
-            print(f'using GUI backend: {backend}')
-            return
-        except:
-            pass
-    print("Sorry, no usable blocking GUI backend available on your system!")
 #------------------------------------------------------------------------------
 DELAY = 5 # seconds - interval between plot updates
 LOG_SWITCH = 3
+CHECK = "\u2705"
+FAIL  = "\u274C"
+WARN  = "\u26A0"
 #------------------------------------------------------------------------------
 # The loss file should be a simple text file with olumns of numbers:
 #
@@ -125,21 +119,32 @@ class Monitor:
         :   :
     monitor()
     '''
-    def __init__(self, loss_file):
-        find_blocking_backend()
-        import matplotlib.pyplot as plt
-        
+    def __init__(self, loss_file, init_fig=False):
+
+        # get first blocking backend
+        for backend in ("QtAgg", "TkAgg", "MacOSX"):
+            try:
+                mp.use(backend, force=True)
+                import matplotlib.pyplot as plt
+                break
+            except:
+                backend = None
+
+        if backend == None:
+            print(f'{WARN} No suitable GUI (blocking) backend found for Monitor!')
+            
         self.loss_file = loss_file
         self.timeleft_file = '.timeleft'
         
         # set up an empty figure
-        self.fig = plt.figure(figsize=(8, 4))
-        self.fig.suptitle(loss_file)
-
-        # add a subplot to it
-        nrows, ncols, index = 1,1,1
-        self.ax  = self.fig.add_subplot(nrows, ncols, index)
-        
+        if init_fig:
+            self.fig = plt.figure(figsize=(8, 4))
+            self.fig.suptitle(loss_file)
+    
+            # add a subplot to it
+            nrows, ncols, index = 1,1,1
+            self.ax  = self.fig.add_subplot(nrows, ncols, index)
+            
     def plot(self, frame=None, logx=True):
         fig, ax = self.fig, self.ax
         
@@ -186,13 +191,13 @@ class Monitor:
                                  interval=1000*DELAY, # milliseconds
                                  repeat=False, 
                                  cache_frame_data=False)
-
-def monlosses(loss_file):
-    # realtime monitoring
-    import subprocess
-    self.p = subprocess.Popen(["monlosses", loss_file],
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.DEVNULL)
+    def start(self):
+        import subprocess
+        self.p = subprocess.Popen(["monlosses", self.loss_file],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.DEVNULL)
+    def end(self):
+        mp.use('module://matplotlib_inline.backend_inline', force=True)
 #--------------------------------------------------------------------
 class LossWriter:
     '''
