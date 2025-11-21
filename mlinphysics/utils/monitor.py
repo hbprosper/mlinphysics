@@ -120,8 +120,9 @@ class Monitor:
     monitor()
     '''
     def __init__(self, loss_file, init_fig=False):
-
+        
         # get first blocking backend
+        self.original_backend = mp.get_backend()
         for backend in ("QtAgg", "TkAgg", "MacOSX"):
             try:
                 mp.use(backend, force=True)
@@ -197,7 +198,7 @@ class Monitor:
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.DEVNULL)
     def end(self):
-        mp.use('module://matplotlib_inline.backend_inline', force=True)
+        mp.use(self.original_backend, force=True)
 #--------------------------------------------------------------------
 class LossWriter:
     '''
