@@ -117,23 +117,46 @@ class Dataset(td.Dataset):
         has_targets   = type(targets) != type(None)
         split_data    = type(split_col) != type(None)
 
-        # store_as_tensor will be false if data is a list of tensors
-        try:
-            tmp = torch.tensor(data[start:end])
-            self.store_as_tensor = True
-        except:
-            self.store_as_tensor = False
+        # check data type
+        self.is_tensor= isinstance(data, torch.Tensor)
+        self.is_array = isinstance(data, np.ndarray)
+        self.is_list_of_tensors = \
+        isinstance(data, list) and isinstance(data[0], torch.Tensor)
 
+        if not (self.is_array or self.is_tensor or self.is_list_of_tensors):
+            raise TypeError(f'''
+        Wrong input type: {str(type(data)):s}
+        Should be either 1) a tensor, 2) a numpy array or 3) a list of tensors.
+        ''')
+
+        # data and targets should be of the same type
+        if has_targets:
+            if   self.is_tensor or self.is_array:
+                if type(data) != type(targets):
+                    raise TypeError(f'''
+                    source and targets should be of the same type:
+                     type(data):     {type(data)}
+                     type(targets):  {type(targets)}
+                    ''')
+            else:
+                if type(data[0]) != type(targets):
+                    raise TypeError(f'''
+                    source and targets should be of the same type:
+                     type(data[0]):  {type(data[0])}
+                     type(targets):  {type(targets)}
+                    ''')
         y = None
         if random_sample_size == None:
-            if self.store_as_tensor:
+            if self.is_array:
                 x = torch.tensor(data[start:end])
             else:
-                # assume we have a list of possibly inhomogeneous tensors
                 x = data[start:end]
 
             if has_targets:
-                y = torch.tensor(targets[start:end])
+                if self.is_array:
+                    y = torch.tensor(targets[start:end])
+                else:
+                    y = targets[start:end]
         else:
             # create a random sample from items in the specified range (start, end)
             assert(type(random_sample_size) == type(0))
@@ -142,15 +165,20 @@ class Dataset(td.Dataset):
             assert(length > 0)
 
             indices = torch.randint(start, end-1,
-                                        size=(random_sample_size,))
-            if self.store_as_tensor:
+                                    size=(random_sample_size,))
+            if self.is_array:
                 x = torch.tensor(data[indices])
+            elif self.is_tensor:
+                x = data[indices]
             else:
-                # assume we have a list of possibly inhomogeous tensors
+                # we have a list of possibly inhomogeous tensors
                 x = [data[i] for i in indices]
 
             if has_targets:
-                y = torch.tensor(targets[indices])
+                if self.is_array:
+                    y = torch.tensor(targets[indices])
+                else:
+                    y = targets[indices]
 
         # perhaps we should split?
         if split_data:
@@ -159,23 +187,22 @@ class Dataset(td.Dataset):
             x = x[:, :split_col].view(-1, split_col)
 
         if requires_grad:
-            if self.store_as_tensor:
-                x = x.requires_grad_(True)
+            if self.is_list_of_tensors:
+                x = [d.requires_grad_(True) for d in x]                
             else:
-                # assume we have a list of tensors
-                x = [d.requires_grad_(True) for d in x]
+                x = x.requires_grad_(True)
 
         # cache, needed later
         self.has_targets = has_targets
 
         # cache data
-        if self.store_as_tensor:
-            self.x = x.to(device)
-        else:
+        if self.is_list_of_tensors:
             self.x = [d.to(device) for d in x]
+        else:
+            self.x = x.to(device)
 
-        # assume y is a tensor
-        if self.has_targets:
+        # y should be a tensor at this stage
+        if has_targets:
             self.y = y.to(device)
 
         if verbose:
@@ -230,7 +257,7 @@ class DataLoader:
        This class uses the Python generator pattern
     '''
     def __init__(self, dataset,
-                 batch_size=None,
+                 batch_size,
                  num_iterations=None,
                  verbose=1,
                  debug=0,
@@ -241,13 +268,8 @@ class DataLoader:
         self.num_iterations = num_iterations
         self.verbose = verbose
         self.debug   = debug
-        self.shuffle = shuffle
-
-        self.size = len(dataset)
-
-        # need batch_size
-        if self.batch_size is None:
-            raise ValueError("you must specify a batch_size!")
+        self.shuffle = shuffle 
+        self.size    = len(dataset)
 
         # if shuffle, then shuffle the dataset every shuffle_step iterations
         self.shuffle_step = max(1, self.size // self.batch_size)
@@ -291,7 +313,7 @@ class DataLoader:
         self.indices = torch.arange(self.size)
         
     # This method implements the Python generator pattern.
-    # The for loop
+    # The loop
     #  for batch in loader:
     #          : :
     # is logically equivalent to:

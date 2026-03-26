@@ -15,8 +15,15 @@ import torch.utils.data as td
 import time
 from datetime import datetime
 from torch.optim.lr_scheduler import MultiStepLR
+try:
+    import scipy.stats as st
+except:
+    raise ImportError('''
+    Please install scipy:
 
-import scipy.stats as st
+        conda install scipy
+    ''')
+
 import yaml
 # ----------------------------------------------------------------------------
 # Simple utilities
@@ -75,35 +82,6 @@ def elapsed_time(now, start):
     seconds = t - 60 * minutes
     etime_str = "%2.2d:%2.2d:%2.2d" % (hours, minutes, seconds)
     return etime_str, etime, (hours, minutes, seconds)
-
-def get_steplr_scheduler(optimizer, config):
-    # Number of milestones in multistep LR schedule
-    n_steps = config('n_steps')
-    n_milestones = n_steps - 1
-    print(f'number of milestones: {n_milestones:10d}\n')
-
-    # Learning rate milestones
-    n_iters_per_step = config('n_iters_per_step')
-    milestones = [n * n_iters_per_step for n in range(n_steps)]
-
-    # learning rates
-    base_lr = config('base_lr')
-    gamma = config('gamma')
-    lrs = [base_lr * gamma**i for i in range(n_steps)]
-    
-    print("Step | Milestone | LR")
-    print("-----------------------------")
-    for i in range(n_steps):
-        print(f"{i:>4} | {milestones[i]:>9} | {lrs[i]:<10.1e}")
-        if i < 1:
-            print("-----------------------------")
-    print()
-    
-    n_iters = n_steps * n_iters_per_step
-    print(f'number of iterations:     {n_iters:10d}\n')
-    
-    # drop first entry of milestones list because it contains the base LR    
-    return MultiStepLR(optimizer, milestones=milestones[1:], gamma=gamma)
 
 def plot_loss_curve(losses):
     
@@ -464,11 +442,40 @@ class Config:
             allow_unicode=True))
 # ---------------------------------------------------------------------------
 class LRStepScheduler:
-    def __init__(self, optimizer, scheduler, verbose=True):
+    def __init__(self, 
+                 optimizer, n_steps, n_iters_per_step, base_lr, gamma, 
+                 verbose=True):
+        
         self.optimizer = optimizer
-        self.scheduler = scheduler
+        self.scheduler = self.__get_steplr_scheduler(
+            optimizer, n_steps, n_iters_per_step, base_lr, gamma
+        )
         self.verbose   = verbose
         self.curr_lr   = -1.0
+
+    def __get_steplr_scheduler(self,
+        optimizer, n_steps, n_iters_per_step, base_lr, gamma):
+        
+        # Number of milestones in multistep LR schedule
+        n_milestones = n_steps - 1
+        print(f'number of milestones: {n_milestones:10d}\n')
+    
+        # Learning rate milestones
+        milestones = [n * n_iters_per_step for n in range(n_steps)]
+    
+        # learning rates
+        lrs = [base_lr * gamma**i for i in range(n_steps)]
+        
+        print("Step | Milestone | LR")
+        print("-----------------------------")
+        for i in range(n_steps):
+            print(f"{i:>4} | {milestones[i]:>9} | {lrs[i]:<10.1e}")
+            if i < 1:
+                print("-----------------------------")
+        print()
+        
+        # drop first entry of milestones list because it contains the base LR    
+        return MultiStepLR(optimizer, milestones=milestones[1:], gamma=gamma)
 
     def step(self):
         self.scheduler.step()
