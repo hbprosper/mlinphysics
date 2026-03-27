@@ -23,7 +23,7 @@ def download(datafile,
     import requests
     
     if os.path.exists(datafile):
-        return
+        return True
         
     dirname, filename = os.path.split(datafile)
     dirname = os.path.abspath(dirname)
@@ -32,13 +32,14 @@ def download(datafile,
 
     url = f'{website}/{filename}'
 
+    success = False
     try:
         response = requests.get(url, timeout=timeout)  # seconds
         response.raise_for_status()  # raises HTTPError if status >= 400
         with open(filename, "wb") as f:
             f.write(response.content)
         print("✅ Download succeeded.")
-        print(os.listdir())
+        success = True
     except requests.exceptions.HTTPError as e:
         print("❌ HTTP error:", e)
     except requests.exceptions.ConnectionError:
@@ -49,6 +50,8 @@ def download(datafile,
         print("❌ Other error:", e)
 
     os.chdir(cwd)
+    
+    return success
 # ----------------------------------------------------------------------------
 # Using a Sobol sequence to created a sample of points
 # ----------------------------------------------------------------------------

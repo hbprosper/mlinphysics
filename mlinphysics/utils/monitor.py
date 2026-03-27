@@ -249,7 +249,11 @@ class Monitor:
         self.timeleftfile = lossfile.replace('.csv', '.txt')       
         self.minavloss = float('inf')  # initialize minimum average loss
         self.ylabel = ylabel
-                    
+
+        # In case the graphics backend changes, let's 
+        # cache current backend and restore in the end function
+        self.original_backend = mp.get_backend()
+    
         # initialize loss file
         # create loss file if it does not exist
         if not os.path.exists(lossfile) or newlossfile:
