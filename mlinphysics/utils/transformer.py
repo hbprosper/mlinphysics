@@ -257,9 +257,9 @@ class SequenceData:
         print()
 
     def split(self, tokens):
-        J = list(tokens.flatten()).index(self.SEP)
-        prompt = tokens[0, :J+1]   # delimited prompt
-        target = tokens[0, J+1:-1] # un-delimited target   
+        j = list(tokens.flatten()).index(self.SEP)
+        prompt = tokens[0, :j+1].view(1, -1)   # Delimited prompt, shape: [1, prompt_len]
+        target = tokens[0, j+1:-1]             # Un-delimited target, shape: [target_len]  
         return prompt, target
 
     def str(self, tokens):
@@ -273,10 +273,10 @@ class SequenceData:
         tokens = tokens[1:-1]
         j = list(tokens).index(self.SEP)
         
-        p = stringify(tokens[:j], self.code2token)
+        p = self.str(tokens[:j])
         print('Prompt')
         pprint(p)
         
         print('Target')
-        t = stringify(tokens[j+1:], self.code2token)
+        t = self.str(tokens[j+1:])
         pprint(t)        
