@@ -249,34 +249,47 @@ class SequenceData:
         print()
         print('Summary')
         print(f' sample size:                {len(self.sequences):8d}')
-        print()
         print(f'  avg(sequence length):      {avg_seq_len:8.1f}')
         print(f'  stdv(sequence length):     {std_seq_len:8.1f}')
-        print()
         print(f' vocabulary size:            {self.VOCAB_SIZE:8d}')
         print()
 
-    def split(self, tokens):
-        j = list(tokens.flatten()).index(self.SEP)
-        prompt = tokens[0, :j+1].view(1, -1)   # Delimited prompt, shape: [1, prompt_len]
-        target = tokens[0, j+1:-1]             # Un-delimited target, shape: [target_len]  
+    def split(self, sequence):
+        j = list(sequence.flatten()).index(self.SEP)
+        prompt = sequence[0, :j+1].view(1, -1)   # Delimited prompt, shape: [1, prompt_len]
+        target = sequence[0, j+1:-1]             # Un-delimited target, shape: [target_len]  
         return prompt, target
 
-    def str(self, tokens):
-        return stringify(tokens, self.code2token)
+    def str(self, sequence):
+        return stringify(sequence, self.code2token)
         
-    def pprint(self, tokens):
-        print('Tokens')
-        print(tokens)
+    def pprint(self, sequence):
+        '''
+    Print a single sequence.
+    
+    Arguments:
+        sequence: numpy array or a tensor
+        '''
+        # Determine if we have a 2D shape
+        try:
+            if sequence.ndim == 2:  # shape
+                sequence = sequence[0]
+        except:
+            # sequence probably doesn't have an ndim attribute
+            pass
+            
+        print('Sequence')
+        print(sequence)
         print()
 
-        tokens = tokens[1:-1]
-        j = list(tokens).index(self.SEP)
+        sequence = sequence[1:-1]          # Strip away <sos> and <eos> tokens
+            
+        j = list(sequence).index(self.SEP) # Find index of separator token
         
-        p = self.str(tokens[:j])
+        prompt = self.str(sequence[:j])
         print('Prompt')
-        pprint(p)
+        pprint(prompt)
         
         print('Target')
-        t = self.str(tokens[j+1:])
-        pprint(t)        
+        target = self.str(sequence[j+1:])
+        pprint(target)        

@@ -14,6 +14,8 @@ import torch.utils.data as td
 
 import time
 from datetime import datetime
+from pathlib import Path
+
 from torch.optim.lr_scheduler import MultiStepLR
 try:
     import scipy.stats as st
@@ -273,52 +275,52 @@ class ELM(nn.Module):
         pseudo_inverse = torch.pinverse(output)
         self.output_weights = torch.mm(pseudo_inverse, y)
 # ---------------------------------------------------------------------------
+def configname(name, dirname):
+    return f'runs/{dirname}/{name}_config.yaml'
+    
 class Config:
     '''
         Manage simple ML application configuration
 
           name:      name stub for all files, including the yaml file
-          batchsize: 
+            :
           base_lr:   base learning rate
             :
           etc.
     '''
-    def __init__(self, name, mkdir=True, dirname=None, verbose=0):
+    def __init__(self, name, dirname=None, verbose=0):
         '''
-        name  : string   Stub for all files, including the yaml file, or 
-                         the name of a yaml file. A json file is identified 
-                         by the extension .yaml
+        name : string    Stub for all files, including the yaml file, or 
+                         the name of a yaml file. A json file must have 
+                         extension .yaml
                 
-                            1. if name is a name stub, create a new yaml object.
-                            2. if name is a yaml filename, create the yaml object
+                            1. If name is a name stub, create a new yaml object.
+                            2. If name is a yaml filename, create the yaml object
                                from the file.
-                               
-        mkdir : bool     If True create log folder [True]. The default name is
-                         runs/<timestamp>.
                          
         dirname : string If given use this as the name of the folder: 
-                         runs/<dirname>.
+                         runs/<dirname>. The default name is runs/<timestamp>.
         '''
-        self.makedir = mkdir
         self.dirname = dirname
         if self.dirname is None:
             self.time = time.ctime()
             self.dirname = datetime.now().strftime("%Y-%m-%d_%H%M")
-            
+
         logdir = f"runs/{self.dirname}"
         self.logdir = logdir
         
-        # create run folder if self.makedir is True
-        self.mkdir()
+        # Create run folder if self.makedir is True
+        os.makedirs("runs", exist_ok=True)
+        os.makedirs(self.logdir, exist_ok=True) 
                 
-        # check if a yaml file has been specified
-        if name.endswith('.yaml') or name.endswith('.yml'):
-            self.cfg_filename = name # cache filename
-            self.load(name)
+        # Check IO direction 
+        if name.endswith('.yaml'):
+            # Read mode
+            filename = name
+            self.load(filename)  
+            self.cfg_filename = filename # cache filename
         else:
-            # this not a yaml file specification, assume it is a name stub
-            # and build a Python dictionary that specifies the structure of
-            # 
+            # Write mode
             self.cfg = {}
             cfg = self.cfg
             
@@ -341,11 +343,6 @@ class Config:
     
         if verbose:
             print(self.__str__())
-
-    def mkdir(self):
-        if self.makedir:
-            os.makedirs("runs", exist_ok=True)
-            os.makedirs(self.logdir, exist_ok=True) 
         
     def load(self, filename):
         # make sure file exists
