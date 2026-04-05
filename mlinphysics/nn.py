@@ -135,6 +135,10 @@ class Model(nn.Module):
         torch.save(self.state_dict(), paramsfile)
     
     def load(self, paramsfile):
+        if not sys.path.exists(paramsfile):
+            raise FileNotFound(f'''
+    Model parameter file {paramsfile} NOT found!
+            ''')
         # load parameters of neural network and set to eval mode
         self.load_state_dict(torch.load(paramsfile, 
                                         weights_only=True,
@@ -302,6 +306,12 @@ class Config:
             # Read mode
             # ----------------------------------------------------------
             self.filename = name
+            
+            if not sys.path.exists(self.filename):
+            raise FileNotFound(f'''
+    Configuration file {self.filename} NOT found!
+            ''')
+ 
             self.load(self.filename)  
 
             p = Path(self.filename)
