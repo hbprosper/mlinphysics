@@ -26,9 +26,9 @@ try:
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
     from torch_geometric.utils import scatter, softmax, subgraph
-    PYG_NOT_AVAILABLE = False
+    PYG_IS_AVAILABLE = True
 except:
-    PYG_NOT_AVAILABLE = True
+    PYG_IS_AVAILABLE = False
 
 def PYG_WARN():
     print(f'''
@@ -42,6 +42,20 @@ def PYG_WARN():
     to install the module. 
     ''')
 
+try:
+    import sklearn
+    SKLEARN_IS_AVAILABLE = True
+except:
+    SKLEARN_IS_AVAILABLE = False
+
+def SKLEARN_WARN():
+    print(f'''
+{WARN}:  scikit-learn is needed!
+
+    Please use either
+        conda install scikit-learn
+    ''')
+    
 # graph G = (V, E) plots
 import networkx as nx
 
@@ -411,7 +425,7 @@ def edge_weights(nodes, edge_index,
     ieta       : int - Feature index of eta [1]
     iphi       : int - Feature index of phi [2]
     '''
-    if PYG_NOT_AVAILABLE:
+    if not PYG_IS_AVAILABLE:
         raise ModuleNotFoundError(PYG_WARN())
     
     # 1. Compute dR**2 between all pairs of particles
@@ -504,7 +518,7 @@ class GraphDataset(list):
         '''
         import numpy
         
-        if PYG_NOT_AVAILABLE:
+        if not PYG_IS_AVAILABLE:
             raise ModuleNotFoundError(PYG_WARN())
 
         super().__init__()
@@ -558,7 +572,7 @@ class GraphDataset(list):
             try:
                 print(f"  shape of x: {self.x.shape}")
                 if self.has_targets:
-                    print(f"  shape of y: {self.y.shape}")
+                    print(f"  shape of y: {self.y.shape}, device: {self.y.device}")
             except:
                 print(f"  shape of x: {len(self.x)}")
                 if self.has_targets:
@@ -573,6 +587,6 @@ class GraphDataset(list):
             dataset.append(
                 Data(x=self.x[i],
                      edge_index=self.connection(self.x[i]).to(device),
-                     y=torch.Tensor([self.y[i]]))
+                     y=torch.Tensor([self.y[i]]).to(device))
             )
         return dataset
