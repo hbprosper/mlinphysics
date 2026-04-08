@@ -286,8 +286,17 @@ class Monitor:
         # if specified save model parameters
         if type(self.model) != type(None):
             if loss_decreased:
+                
+                if os.path.exists(self.paramsfile):
+                    cmd = f'mv {self.paramsfile} {self.paramsfile}.previous'
+                    os.system(cmd)
+                    
                 self.model.save(self.paramsfile)
 
+                if os.path.exists(self.checkfile):
+                    cmd = f'mv {self.checkfile} {self.checkfile}.previous'
+                    os.system(cmd)
+                    
                 open(self.checkfile, 'w').write('iteration,train,val,valbest,lr\n') 
                 open(self.checkfile, 'a').write(
                     f'{self.itno:10d},'

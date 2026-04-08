@@ -131,6 +131,9 @@ class Model(nn.Module):
         self.net = None
         
     def save(self, paramsfile):
+        if os.path.exists(paramsfile):
+            cmd = f'mv {paramsfile} {paramsfile}.previous'
+            os.system(cmd)
         # save parameters of neural network
         torch.save(self.state_dict(), paramsfile)
     
