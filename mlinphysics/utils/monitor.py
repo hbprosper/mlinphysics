@@ -5,6 +5,9 @@
 #------------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
+import pandas as pd
+from pathlib import Path
+
 try:
     import pandas as pd
 except:
@@ -240,16 +243,20 @@ class Monitor:
       
         # cache inputs
         self.niterations = niterations
-        self.lossfile = lossfile
+        self.lossfile    = lossfile
         self.monitorstep = monitorstep
         self.newlossfile = newlossfile
-        self.frac = frac
+        self.frac  = frac
         self.model = model
-        self.paramsfile = paramsfile
-        self.timeleftfile = lossfile.replace('.csv', '.txt')       
+        self.paramsfile  = paramsfile
+        
+        p = Path(lossfile)
+        self.timeleftfile= lossfile.replace('.csv', '.txt')
+        self.checkfile = lossfile.replace(f'{p.name}', 'checkpoint.csv')
+        
         self.minavloss = float('inf')  # initialize minimum average loss
         self.ylabel = ylabel
-
+        
         # In case the graphics backend changes, let's 
         # cache current backend and restore in the end function
         self.original_backend = mp.get_backend()
@@ -258,7 +265,7 @@ class Monitor:
         # create loss file if it does not exist
         if not os.path.exists(lossfile) or newlossfile:
             open(lossfile, 'w').write('iteration,train,val,valbest,lr\n')  
-    
+        
         self.reset()
         
     def __call__(self, t_loss, v_loss, lr=0, epoch=None):
@@ -281,6 +288,11 @@ class Monitor:
             if loss_decreased:
                 self.model.save(self.paramsfile)
 
+                open(self.checkfile, 'w').write('iteration,train,val,valbest,lr\n') 
+                open(self.checkfile, 'a').write(
+                    f'{self.itno:10d},'
+                    f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e},{lr:9.3e}\n')
+
         # update time left file
         if epoch != None:
             line = f'|{t_loss:9.3e}|{v_loss:9.3e}|{epoch:10d}|'
@@ -289,12 +301,18 @@ class Monitor:
             
         self.timeleft(jj, line)
         open(self.timeleftfile, 'w').write(f'{str(self.timeleft):s}\n')
-
+        
     def step(self):
         save = self.ii % self.monitorstep == 0
         self.ii += 1
         return save
 
+    def read_checkpoint(self):
+        if sys.path.exists(self.checkfile):
+            return pd.read_csv(self.checkfile)
+        else:
+            return None
+        
     def reset(self):
         # get last iteration number from loss file
         df = pd.read_csv(self.lossfile)

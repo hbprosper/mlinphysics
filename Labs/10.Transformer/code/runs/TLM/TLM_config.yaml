@@ -1,8 +1,9 @@
-name: TML
+name: TLM
 file:
   config: runs/TLM/TLM_config.yaml
   losses: runs/TLM/TLM_losses.csv
   params: runs/TLM/TLM_params.pth
+  script: runs/TLM/TLM_script.pth
   init_params: runs/TLM/TLM_init_params.pth
   plots: runs/TLM/TLM_plots.png
 train_size: 12000
@@ -11,14 +12,14 @@ test_size: 800
 batch_size: 32
 monitor_step: 100
 frac: 0.01
-n_steps: 1
-n_iterations: 400000
-n_iters_per_step: 400000
-base_lr: 0.0002
-gamma: 1.0
+n_steps: 16
+n_iterations: 800000
+n_iters_per_step: 50000
+base_lr: 0.0016
+gamma: 0.8312378961427878
 DATAFILE: ../data/seq2seq_series_2terms.txt
 MAX_SEQ_LEN: 128
-EMB_DIM: 64
+EMB_DIM: 72
 LAYERS: 3
 HEADS: 8
 FF_DIM: 128
@@ -28,3 +29,4 @@ PAD: 0
 SOS: 1
 EOS: 2
 SEP: 3
+PROMPT_MASK: false

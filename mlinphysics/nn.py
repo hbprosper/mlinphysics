@@ -135,10 +135,8 @@ class Model(nn.Module):
         torch.save(self.state_dict(), paramsfile)
     
     def load(self, paramsfile):
-        if not sys.path.exists(paramsfile):
-            raise FileNotFound(f'''
-    Model parameter file {paramsfile} NOT found!
-            ''')
+        if not os.path.exists(paramsfile):
+            raise FileNotFoundError(f'Model parameter file {paramsfile} NOT found!')
         # load parameters of neural network and set to eval mode
         self.load_state_dict(torch.load(paramsfile, 
                                         weights_only=True,
@@ -151,7 +149,7 @@ class Model(nn.Module):
             x = torch.concat((x, p), dim=-1)
             
         if self.net == None:
-            raise ValueError('self.net not defined. Please do so in constructor!')
+            raise ValueError('self.net not defined. Please do so in __init__!')
             
         y = self.net(x)   
         return y
@@ -307,8 +305,8 @@ class Config:
             # ----------------------------------------------------------
             self.filename = name
             
-            if not sys.path.exists(self.filename):
-            raise FileNotFound(f'''
+            if not os.path.exists(self.filename):
+                raise FileNotFound(f'''
     Configuration file {self.filename} NOT found!
             ''')
  
@@ -342,6 +340,7 @@ class Config:
 
             o_cfg['config']     = f'{logdir}/{name}_config.yaml'
             o_cfg['losses']     = f'{logdir}/{name}_losses.csv'
+            o_cfg['script']     = f'{logdir}/{name}_script.pth'
             o_cfg['params']     = f'{logdir}/{name}_params.pth'
             o_cfg['init_params']= f'{logdir}/{name}_init_params.pth'
             o_cfg['plots']      = f'{logdir}/{name}_plots.png'
