@@ -309,7 +309,7 @@ class Config:
             self.filename = name
             
             if not os.path.exists(self.filename):
-                raise FileNotFound(f'''
+                raise FileNotFoundError(f'''
     Configuration file {self.filename} NOT found!
             ''')
  
