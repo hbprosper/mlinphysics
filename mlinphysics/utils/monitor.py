@@ -1,15 +1,14 @@
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------
 # Real time monitoring of loss curves during training
 # Harrison B. Prosper
 # Created: July 2021
 # Updated: Jun 12 2026 - Use tensorboard
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------
 try:
     import pandas as pd
 except:
@@ -28,13 +27,13 @@ except:
 
         conda install matplotlib
     ''')
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------
 DELAY = 5 # seconds - interval between plot updates
 LOG_SWITCH = 3
 CHECK = "\u2705"
 FAIL  = "\u274C"
 WARN  = "\u26A0"
-#------------------------------------------------------------------------------
+#-------------------------------------------------------------------------
 # The loss file should be a simple text file with olumns of numbers:
 #
 #   iterations,train-losses,validation-losses,...
@@ -283,10 +282,10 @@ class Monitor:
                         f'{t_loss:9.3e},{v_loss:9.3e},'
                         f'{v_best_loss:9.3e},{lr:9.3e}\n')
 
-        self.writer.add_scalar(’Loss/train’, t_loss, self.itno)
-        self.writer.add_scalar(’Loss/val’,   v_loss, self.itno)
-        self.writer.add_scalar(’Loss/val_best’, v_best_loss, self.itno)
-        self.writer.add_scalar(’LearningRate’, lr, self.itno)
+        self.writer.add_scalar("Loss/train", t_loss, self.itno)
+        self.writer.add_scalar("Loss/val",   v_loss, self.itno)
+        self.writer.add_scalar("Loss/val_best", v_best_loss, self.itno)
+        self.writer.add_scalar("LearningRate", lr, self.itno)
         self.writer.flush()
         
         # if specified save model parameters
