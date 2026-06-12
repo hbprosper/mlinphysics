@@ -250,10 +250,10 @@ class Monitor:
         self.ylabel = ylabel
 
         # get absolute path to runs folder
-        runs_pathname = p.parent.resolve().parent.resolve()
+        # runs_pathname = p.parent.resolve()
 
         # create a tensorboard writer
-        self.writer = SummaryWriter(log_dir=runs_pathname)
+        self.writer = SummaryWriter(log_dir=os.path.expanduser('~/runs'))
         
         # In case the graphics backend changes, let's 
         # cache current backend and restore in the end function
