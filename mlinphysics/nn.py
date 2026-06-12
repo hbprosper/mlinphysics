@@ -124,6 +124,17 @@ class ExponentialLoss(nn.Module):
         losses = torch.exp( -0.5 * y * f)
         return torch.mean(losses)
 
+# By Claude
+class SwiGLU(nn.Module):
+    def __init__(self, in_features, hidden_features):
+        super().__init__()
+        self.w = nn.Linear(in_features, hidden_features)
+        self.v = nn.Linear(in_features, hidden_features)
+        self.silu = nn.SiLU()
+
+    def forward(self, x):
+        return self.silu(self.w(x)) * self.v(x)
+
 class Model(nn.Module):
     
     def __init__(self): 

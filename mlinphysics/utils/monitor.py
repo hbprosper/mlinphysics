@@ -1,13 +1,15 @@
 #------------------------------------------------------------------------------
 # Real time monitoring of loss curves during training
 # Harrison B. Prosper
-# July 2021
+# Created: July 2021
+# Updated: Jun 12 2026 - Use tensorboard
 #------------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
 import pandas as pd
 from pathlib import Path
-
+from torch.utils.tensorboard import SummaryWriter
+#------------------------------------------------------------------------------
 try:
     import pandas as pd
 except:
@@ -115,21 +117,16 @@ class TimeLeft:
                 
             yield ii
             
-    def __call__(self, ii, extra='', colorize=False):
-        
+    def __call__(self, ii, extra='', colorize=False):    
         if extra != '':
             if colorize:
                extra = "\x1b[1;34;48m|%s\x1b[0m" % extra
                 
         self.a_str = f'{self.__timestr(ii):s}{extra:s}'
-        
-        if ii < self.N-1:
-            print(f'\r{self.a_str}', end='')
-        else:
-            print(f'\r{self.a_str}')
+        return self.a_str
 
     def __str__(self):
-        return self.a_str
+        return self.a_str()
 #--------------------------------------------------------------------
 class LossMonitor:    
     '''    
@@ -223,12 +220,8 @@ class LossMonitor:
 class Monitor:
     '''
     Write training and validation losses to a csv file and optionally
-    the model parameters. The losses can be monitored while training 
-    by running the command
-
-        monlosses losses.csv&
-
-    where losses.csv is the name of the loss file
+    the model parameters. The losses are displayed by tensorboard in
+    a different tab.
     '''
 
     def __init__(self, 
@@ -256,10 +249,16 @@ class Monitor:
         
         self.minavloss = float('inf')  # initialize minimum average loss
         self.ylabel = ylabel
+
+        # get absolute path to runs folder
+        runs_pathname = p.parent.resolve().parent.resolve()
+
+        # create a tensorboard writer
+        self.writer = SummaryWriter(log_dir=runs_pathname)
         
         # In case the graphics backend changes, let's 
         # cache current backend and restore in the end function
-        self.original_backend = mp.get_backend()
+        # self.original_backend = mp.get_backend()
     
         # initialize loss file
         # create loss file if it does not exist
@@ -268,7 +267,7 @@ class Monitor:
         
         self.reset()
         
-    def __call__(self, t_loss, v_loss, lr=0, epoch=None):
+    def __call__(self, t_loss, v_loss, lr=0, epoch=None, same_line=False):
         
         loss_decreased = v_loss < (1 - self.frac) * self.minavloss
         if loss_decreased:
@@ -281,8 +280,15 @@ class Monitor:
 
         open(self.lossfile, 
              'a').write(f'{self.itno:10d},'
-                        f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e},{lr:9.3e}\n')
+                        f'{t_loss:9.3e},{v_loss:9.3e},'
+                        f'{v_best_loss:9.3e},{lr:9.3e}\n')
 
+        self.writer.add_scalar(’Loss/train’, t_loss, self.itno)
+        self.writer.add_scalar(’Loss/val’,   v_loss, self.itno)
+        self.writer.add_scalar(’Loss/val_best’, v_best_loss, self.itno)
+        self.writer.add_scalar(’LearningRate’, lr, self.itno)
+        self.writer.flush()
+        
         # if specified save model parameters
         if type(self.model) != type(None):
             if loss_decreased:
@@ -297,10 +303,12 @@ class Monitor:
                     cmd = f'mv {self.checkfile} {self.checkfile}.previous'
                     os.system(cmd)
                     
-                open(self.checkfile, 'w').write('iteration,train,val,valbest,lr\n') 
+                open(self.checkfile, 'w').write(
+                    'iteration,train,val,valbest,lr\n') 
                 open(self.checkfile, 'a').write(
                     f'{self.itno:10d},'
-                    f'{t_loss:9.3e},{v_loss:9.3e},{v_best_loss:9.3e},{lr:9.3e}\n')
+                    f'{t_loss:9.3e},{v_loss:9.3e},'
+                    f'{v_best_loss:9.3e},{lr:9.3e}\n')
 
         # update time left file
         if epoch != None:
@@ -308,8 +316,14 @@ class Monitor:
         else:
             line = f'|{t_loss:9.3e}|{v_loss:9.3e}|{self.itno:10d}|'
             
-        self.timeleft(jj, line)
-        open(self.timeleftfile, 'w').write(f'{str(self.timeleft):s}\n')
+        timeleft_str = self.timeleft(jj, line)
+
+        if same_line:
+            print(f'\r{timeleft_str}', end='')
+        else:
+            print(timeleft_str)
+            
+        open(self.timeleftfile, 'w').write(f'{timeleft_str:s}\n')
         
     def step(self):
         save = self.ii % self.monitorstep == 0
@@ -338,17 +352,21 @@ class Monitor:
         self.timeleft = TimeLeft(self.niterations)
 
     def start(self):
-        import subprocess
+        #import subprocess
 
         self.reset()
         
-        cmd = ["monlosses", self.lossfile]
-        if self.ylabel != None:
-            cmd.append(self.ylabel)
-        print(' '.join(cmd))
+        #cmd = ["monlosses", self.lossfile]
+        #if self.ylabel != None:
+        #    cmd.append(self.ylabel)
+        #print(' '.join(cmd))
         
-        self.p = subprocess.Popen(cmd,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.DEVNULL)
+        #self.p = subprocess.Popen(cmd,
+        #                          stdout=subprocess.PIPE,
+        #                          stderr=subprocess.DEVNULL)
+        
     def end(self):
-        mp.use(self.original_backend, force=True)
+        #mp.use(self.original_backend, force=True)
+        self.writer.flush()
+        self.writer.close()
+        
