@@ -2,12 +2,19 @@
 # Real time monitoring of loss curves during training
 # Harrison B. Prosper
 # Created: July 2021
-# Updated: Jun 12 2026 - Use tensorboard
+# Updated: Jun 12 2026 - Use tensorboard by default, if installed.
 #-------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
 from pathlib import Path
-from torch.utils.tensorboard import SummaryWriter
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    TENSORBOARD_AVAILABLE = True
+except:
+    TENSORBOARD_AVAILABLE = False
+    print('''
+    tensorboard not installed, will default to builtin loss monitor.
+    ''')
 #-------------------------------------------------------------------------
 try:
     import pandas as pd
@@ -219,8 +226,10 @@ class LossMonitor:
 class Monitor:
     '''
     Write training and validation losses to a csv file and optionally
-    the model parameters. The losses are displayed by tensorboard in
-    a different tab.
+    the model parameters. By default, and if tensorboard is installed,
+    the losses are displayed by tensorboard in a different tab, 
+    otherwise a simple standalone display is activated in a separate
+    window.
     '''
 
     def __init__(self, 
@@ -230,7 +239,8 @@ class Monitor:
                  newlossfile=True,
                  frac=0.005,
                  model=None, 
-                 paramsfile=None, 
+                 paramsfile=None,
+                 use_tensorboard=True,
                  ylabel=None):
       
         # cache inputs
@@ -252,12 +262,17 @@ class Monitor:
         # get absolute path to runs folder
         # runs_pathname = p.parent.resolve()
 
-        # create a tensorboard writer
-        self.writer = SummaryWriter(log_dir=os.path.expanduser('~/runs'))
-        
+        use_tensorboard = use_tensorboard and TENSORBOARD_AVAILABLE
+
+        if use_tensorboard:
+            # create a tensorboard writer if tensorboard is installed
+            self.writer = SummaryWriter(log_dir=os.path.expanduser('~/runs'))
+        else:
+            self.writer = None
+            
         # In case the graphics backend changes, let's 
         # cache current backend and restore in the end function
-        # self.original_backend = mp.get_backend()
+        self.original_backend = mp.get_backend()
     
         # initialize loss file
         # create loss file if it does not exist
@@ -266,7 +281,7 @@ class Monitor:
         
         self.reset()
         
-    def __call__(self, t_loss, v_loss, lr=0, epoch=None, same_line=False):
+    def __call__(self, t_loss, v_loss, lr=0, epoch=None, same_line=True):
         
         loss_decreased = v_loss < (1 - self.frac) * self.minavloss
         if loss_decreased:
@@ -282,11 +297,12 @@ class Monitor:
                         f'{t_loss:9.3e},{v_loss:9.3e},'
                         f'{v_best_loss:9.3e},{lr:9.3e}\n')
 
-        self.writer.add_scalar("Loss/train", t_loss, self.itno)
-        self.writer.add_scalar("Loss/val",   v_loss, self.itno)
-        self.writer.add_scalar("Loss/val_best", v_best_loss, self.itno)
-        self.writer.add_scalar("LearningRate", lr, self.itno)
-        self.writer.flush()
+        if self.writer is not None:
+            self.writer.add_scalar("Loss/train", t_loss, self.itno)
+            self.writer.add_scalar("Loss/val",   v_loss, self.itno)
+            self.writer.add_scalar("Loss/val_best", v_best_loss, self.itno)
+            self.writer.add_scalar("LearningRate", lr, self.itno)
+            self.writer.flush()
         
         # if specified save model parameters
         if type(self.model) != type(None):
@@ -351,21 +367,24 @@ class Monitor:
         self.timeleft = TimeLeft(self.niterations)
 
     def start(self):
-        #import subprocess
+        if self.writer is None:
+            import subprocess
 
         self.reset()
-        
-        #cmd = ["monlosses", self.lossfile]
-        #if self.ylabel != None:
-        #    cmd.append(self.ylabel)
-        #print(' '.join(cmd))
-        
-        #self.p = subprocess.Popen(cmd,
-        #                          stdout=subprocess.PIPE,
-        #                          stderr=subprocess.DEVNULL)
-        
+
+        if self.writer is None:
+            cmd = ["monlosses", self.lossfile]
+            if self.ylabel != None:
+                cmd.append(self.ylabel)
+            print(' '.join(cmd))
+            
+            self.p = subprocess.Popen(cmd,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.DEVNULL, 
+                                      start_new_session=True  )
+            
     def end(self):
-        #mp.use(self.original_backend, force=True)
-        self.writer.flush()
-        self.writer.close()
-        
+        mp.use(self.original_backend, force=True)
+        if self.writer is not None:
+            self.writer.flush()
+            self.writer.close()
