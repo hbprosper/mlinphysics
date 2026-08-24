@@ -3,6 +3,7 @@
 # Harrison B. Prosper
 # Created: July 2021
 # Updated: Jun 12 2026 - Use tensorboard by default, if installed.
+# Updated: Aug 21 2026 - Use standalone monitor by defualt!
 #-------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
@@ -226,10 +227,10 @@ class LossMonitor:
 class Monitor:
     '''
     Write training and validation losses to a csv file and optionally
-    the model parameters. By default, and if tensorboard is installed,
-    the losses are displayed by tensorboard in a different tab, 
-    otherwise a simple standalone display is activated in a separate
-    window.
+    the model parameters. By default, the losses are displayed by a 
+    simple standalone display is activated in a separate window.
+    However, if tensorboard is available, and desired, set
+    use_tensorboard=True.
     '''
 
     def __init__(self, 
@@ -240,7 +241,7 @@ class Monitor:
                  frac=0.005,
                  model=None, 
                  paramsfile=None,
-                 use_tensorboard=True,
+                 use_tensorboard=False,
                  ylabel=None):
       
         # cache inputs
@@ -379,12 +380,29 @@ class Monitor:
             print(' '.join(cmd))
             
             self.p = subprocess.Popen(cmd,
-                                      stdout=subprocess.PIPE,
+                                      stdout=subprocess.DEVNULL,
                                       stderr=subprocess.DEVNULL, 
                                       start_new_session=True  )
-            
-    def end(self):
+
+    def terminate(self):
+
         mp.use(self.original_backend, force=True)
-        if self.writer is not None:
+
+        if self.writer is None:
+            
+            # kill standalone monitoring process
+            try:
+                print('\n\tTerminating standalone loss monitor...')        
+                self.p.terminate()
+                try:
+                    self.p.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.p.kill()
+                    self.p.wait()
+                print('\tDone!')
+            except:
+                print('\tNone stated in this session!')
+
+        else:
             self.writer.flush()
             self.writer.close()
