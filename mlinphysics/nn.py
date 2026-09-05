@@ -5,6 +5,7 @@
 #
 # Harrison B. Prosper
 # Created: Mon Aug 25 2025
+# Updated: Sat Sep 05 2026 HBP: add keyword dirpath to Config
 # ----------------------------------------------------------------------------
 import os, sys, re
 import numpy as np
@@ -26,7 +27,14 @@ except:
         conda install scipy
     ''')
 
-import yaml
+try:
+    import ymal
+except:
+    raise ImportError('''
+    Please install yaml:
+
+        conda install yaml
+    ''')
 # ----------------------------------------------------------------------------
 # Simple utilities
 # ----------------------------------------------------------------------------
@@ -293,57 +301,88 @@ class ELM(nn.Module):
 # ---------------------------------------------------------------------------
 def configname(name, dirname):
     return f'runs/{dirname}/{name}_config.yaml'
-    
+
+# ----------------------------------------------------------------------------
 class Config:
     '''
-        Manage simple ML application configuration.
-    '''
-    def __init__(self, name, dirname=None, verbose=0):
-        '''
-        name : string    Stub for all files or the filename of a yaml 
-                         file. A json file must have extension .yaml
-                
-                            1. If name is a name stub, create a new yaml object.
-                            2. If name is a yaml filename, create the yaml object
-                               from the specified file.
-                         
-        dirname : string If given, use this as the name of the folder: 
-                         runs/<dirname>. The default name is runs/<timestamp>.
-        '''
-        self.dirname = dirname
-               
-        # Check IO direction 
-        if name.endswith('.yaml'):
-            # ----------------------------------------------------------
-            # Read mode
-            # ----------------------------------------------------------
-            self.filename = name
-            
-            if not os.path.exists(self.filename):
-                raise FileNotFoundError(f'''
-    Configuration file {self.filename} NOT found!
-            ''')
- 
-            self.load(self.filename)  
+        Manage simple ML application configuration
 
-            p = Path(self.filename)
-            self.logdir  = self.filename.replace(f'/{p.name}', '')
-            self.dirname = self.logdir.replace('runs/', '')
+          name:      name stub for all files, including the yaml file
+          batchsize: 
+          base_lr:   base learning rate
+            :
+          etc.
+    '''
+    def __init__(self, name, dirname=None, dirpath=None, mkdir=True, verbose=0):
+        '''
+        name  : string   Stub for all files, including the yaml file, or 
+                         the name of a yaml file. A yaml file is identified 
+                         by the extension .yaml
+                
+                            1. if name is a name stub, create a new yaml object.
+                            2. if name is a yaml filename, create the yaml object
+                               from the file.
+                                                        
+        dirname : string  If given use this as the name of the log folder: 
+                          runs/<dirname>
+
+        dirpath : string If given use this as the name of the log folder:
+                          <dirpath>/runs/<dirname>
+
+        mkdir : bool      If True create log folder [True]. Default name:
+                          runs/<name-with-time-stamp>
+        '''
+
+        self.dirname = dirname
+        self.dirpath = dirpath
+        self.makedir = mkdir
+          
+        # check if a yaml file has been specified. if so, modify logdir
+        # accordingly and update the paths to the associated files.
+        if name.endswith('.yaml') or name.endswith('.yml'):
+
+            # we have a yaml file
+            self.cfg_filename = name
+
+            # load configuration file
+            self.load(self.cfg_filename)
+
+            # remember to update name
+            name = self.cfg['name']
+            
+            # get associated logdir
+            logdir = os.path.dirname(self.cfg_filename)
+            self.logdir = f'{logdir}/' if logdir != '' else ''
+            
+            # update paths to other files assuming that they are
+            # in the same folder as the parameters file.
+            o_cfg = self.cfg['file']
+            o_cfg['losses']     = f'{self.logdir}{name}_losses.csv'
+            o_cfg['params']     = f'{self.logdir}{name}_params.pth'
+            o_cfg['script']     = f'{self.logdir}{name}_script.pth'
+            o_cfg['init_params']= f'{self.logdir}{name}_init_params.pth'
+            o_cfg['plots']      = f'{self.logdir}{name}_plots.png'
+
         else:
-            # ----------------------------------------------------------
-            # Write mode
-            # ----------------------------------------------------------
+            # this not a yaml file specification, assume it is a name stub
+            # and build a Python dictionary to store configuration data.
+
             if self.dirname is None:
                 self.time = time.ctime()
                 self.dirname = datetime.now().strftime("%Y-%m-%d_%H%M")
-
-            logdir = f"runs/{self.dirname}"
-            self.logdir = logdir
-        
-            # Create run folder if self.makedir is True
-            os.makedirs("runs", exist_ok=True)
-            os.makedirs(self.logdir, exist_ok=True) 
-
+                        
+            # create log folder
+            if self.makedir:
+                self.logdir = f"runs/{self.dirname}/"
+                
+                if self.dirpath is not None:
+                    if self.dirpath != '':
+                        self.logdir = f"{self.dirpath}/{self.logdir}"
+                    
+                os.makedirs(self.logdir, exist_ok=True) 
+            else:
+                self.logdir = ''
+                
             self.cfg = {}
             cfg = self.cfg
             
@@ -352,25 +391,24 @@ class Config:
             # construct output file names    
             o_cfg = {}
 
-            o_cfg['config']     = f'{logdir}/{name}_config.yaml'
-            o_cfg['losses']     = f'{logdir}/{name}_losses.csv'
-            o_cfg['script']     = f'{logdir}/{name}_script.pth'
-            o_cfg['params']     = f'{logdir}/{name}_params.pth'
-            o_cfg['init_params']= f'{logdir}/{name}_init_params.pth'
-            o_cfg['plots']      = f'{logdir}/{name}_plots.png'
+            o_cfg['losses']     = f'{self.logdir}{name}_losses.csv'
+            o_cfg['params']     = f'{self.logdir}{name}_params.pth'
+            o_cfg['script']     = f'{self.logdir}{name}_script.pth'
+            o_cfg['init_params']= f'{self.logdir}{name}_init_params.pth'
+            o_cfg['plots']      = f'{self.logdir}{name}_plots.png'
 
             cfg['file'] = o_cfg
     
             # create a default name for yaml configuration file
             # this name will be used if a filename is not
             # specified in the save method
-            self.filename = f'{logdir}/{name}_config.yaml'
+            self.cfg_filename = f'{self.logdir}{name}_config.yaml'
     
         if verbose:
             print(self.__str__())
-        
+
     def load(self, filename):
-        # make sure file exists
+        # make sure file exist        
         if not os.path.exists(filename):
             raise FileNotFoundError(f'{filename}')
         
@@ -381,10 +419,10 @@ class Config:
     def save(self, filename=None):
         # if no filename specified use default filename
         if filename == None:
-            filename = self.filename
+            filename = self.cfg_filename
 
         # require .yaml extension
-        if not filename.endswith('.yaml'):
+        if not (filename.endswith('.yaml') or filename.endswith('.yml')):
             raise NameError('the output file must have extension .yaml')
             
         # save to yaml file
