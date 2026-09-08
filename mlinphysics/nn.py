@@ -28,7 +28,7 @@ except:
     ''')
 
 try:
-    import ymal
+    import yaml
 except:
     raise ImportError('''
     Please install yaml:
