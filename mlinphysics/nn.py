@@ -468,7 +468,7 @@ class Config:
                     else:
                         # key exists and a value has been specified
                         # so update key and return new value
-                        cfg[key] = value # update value
+                        cfg[lkey] = value # update value
                     break
             else:
                 # key is not in dictionary object, so add it
