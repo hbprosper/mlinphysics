@@ -6,3 +6,6 @@
 *_losses.csv
 *~$*
 *egg-info*
+
+# Local scratch: files pulled out of the repo, pending manual deletion
+clutter/
