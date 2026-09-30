@@ -9,3 +9,16 @@
 
 # Local scratch: files pulled out of the repo, pending manual deletion
 clutter/
+
+# Large datasets fetched at run time by drwho.data.download().
+# Named individually so the small datasets that ARE tracked
+# (events.h5, spiral.h5, test_data.pth) keep working normally.
+Labs/*/data/galaxy10.h5
+Labs/*/data/sdss_stars.csv.gz
+Labs/*/data/5x64x64*.pth
+Labs/*/data/5x64x64*.hdf5
+
+# Training output written by Config/Monitor. The TLM run is a shipped
+# worked example, so it is re-included.
+Labs/*/runs/
+!Labs/10.Transformer/runs/
