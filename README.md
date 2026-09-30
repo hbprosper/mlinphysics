@@ -5,6 +5,45 @@
 This repository contains machine learning tutorials and lectures associated with the Special Topics Course on Machine Learning in Physics at Florida State University, Department of Physics. The course is designed for graduate students and senior undergrads who have little to no experience with machine learning, but have some experience with Python.
 
 
+## Notebooks
+
+Every notebook below can be opened directly in Google Colab by clicking its badge — no local installation required. The notebook's first code cell detects Colab and installs `mlinphysics` (and the shared `drwho` utilities) automatically.
+
+### Getting started
+
+| notebook | | |
+| :--- | :--- | :--- |
+| [python_minimum_part1.ipynb](GettingStarted/python_minimum_part1.ipynb) | The Python Minimum: Part 1 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/GettingStarted/python_minimum_part1.ipynb) |
+| [python_minimum_part2.ipynb](GettingStarted/python_minimum_part2.ipynb) | The Python Minimum: Part 2 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/GettingStarted/python_minimum_part2.ipynb) |
+| [test.ipynb](GettingStarted/test.ipynb) | Test $\texttt{miniconda3}$ installation | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/GettingStarted/test.ipynb) |
+
+### Labs
+
+| lab | notebook | | |
+| :--- | :--- | :--- | :--- |
+| 01.Perceptron | [00_perceptron.ipynb](Labs/01.Perceptron/00_perceptron.ipynb) | Tutorial: The Perceptron | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/01.Perceptron/00_perceptron.ipynb) |
+|  | [01_why_high_dimension_is_different.ipynb](Labs/01.Perceptron/01_why_high_dimension_is_different.ipynb) | Why High Dimension Is Different | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/01.Perceptron/01_why_high_dimension_is_different.ipynb) |
+|  | [02_a_search_that_works.ipynb](Labs/01.Perceptron/02_a_search_that_works.ipynb) | A Search That Works | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/01.Perceptron/02_a_search_that_works.ipynb) |
+| 02.Metrics | [tutorial_2D_binary_classifer.ipynb](Labs/02.Metrics/tutorial_2D_binary_classifer.ipynb) | Tutorial: Train 2D Classifier | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/02.Metrics/tutorial_2D_binary_classifer.ipynb) |
+|  | [tutorial_ROC_AUC.ipynb](Labs/02.Metrics/tutorial_ROC_AUC.ipynb) | Tutorial: ROC and AUC | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/02.Metrics/tutorial_ROC_AUC.ipynb) |
+|  | [tutorial_other_metrics.ipynb](Labs/02.Metrics/tutorial_other_metrics.ipynb) | Tutorial: Other Classifier Performance Measures | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/02.Metrics/tutorial_other_metrics.ipynb) |
+| 03.ClosureTest | [tutorial_closure_test.ipynb](Labs/03.ClosureTest/tutorial_closure_test.ipynb) | Tutorial: Classifier Performance via Closure Test | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/03.ClosureTest/tutorial_closure_test.ipynb) |
+| 04.CNN | [tutorial_CNN.ipynb](Labs/04.CNN/tutorial_CNN.ipynb) | Tutorial: Convolutional Neural Networks (CNN) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/04.CNN/tutorial_CNN.ipynb) |
+|  | [tutorial_CNN_redshift.ipynb](Labs/04.CNN/tutorial_CNN_redshift.ipynb) | A CNN to Predict Galaxy Photometric Redshifts | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/04.CNN/tutorial_CNN_redshift.ipynb) |
+| 05.PINN | [sobol_sampling.ipynb](Labs/05.PINN/sobol_sampling.ipynb) | Sobol Sampling: Tutorial | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/05.PINN/sobol_sampling.ipynb) |
+|  | [tutorial_PINN.ipynb](Labs/05.PINN/tutorial_PINN.ipynb) | Tutorial: Physics Informed Neural Networks (PINN) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/05.PINN/tutorial_PINN.ipynb) |
+| 06.GNN | [tutorial_GNN.ipynb](Labs/06.GNN/tutorial_GNN.ipynb) | Tutorial: Graph Neural Networks (GNN) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/06.GNN/tutorial_GNN.ipynb) |
+| 07.AE | [tutorial_AE.ipynb](Labs/07.AE/tutorial_AE.ipynb) | Tutorial: Autoencoder (AE) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/07.AE/tutorial_AE.ipynb) |
+|  | [tutorial_CAE.ipynb](Labs/07.AE/tutorial_CAE.ipynb) | Tutorial: Convolutional Autoencoder (CAE) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/07.AE/tutorial_CAE.ipynb) |
+| 08.NFlow_DModel | [tutorial_diffusion.ipynb](Labs/08.NFlow_DModel/tutorial_diffusion.ipynb) | Deterministic Diffusion Models (DDM) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/08.NFlow_DModel/tutorial_diffusion.ipynb) |
+|  | [tutorial_normflow.ipynb](Labs/08.NFlow_DModel/tutorial_normflow.ipynb) | Normalizing Flows | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/08.NFlow_DModel/tutorial_normflow.ipynb) |
+| 09.GAE | [tutorial_GAE.ipynb](Labs/09.GAE/tutorial_GAE.ipynb) | Tutorial: Graph AutoEncoder with (PyG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/09.GAE/tutorial_GAE.ipynb) |
+|  | [tutorial_GAE_without_PyG.ipynb](Labs/09.GAE/tutorial_GAE_without_PyG.ipynb) | Tutorial: Graph Autoencoder (GAE) without PyG | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/09.GAE/tutorial_GAE_without_PyG.ipynb) |
+|  | [tutorial_GNN_with_PyG.ipynb](Labs/09.GAE/tutorial_GNN_with_PyG.ipynb) | Tutorial: Graph Neural Networks (GNN) with PyG | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/09.GAE/tutorial_GNN_with_PyG.ipynb) |
+| 10.Transformer | [tutorial_tiny_language_model.ipynb](Labs/10.Transformer/tutorial_tiny_language_model.ipynb) | Tutorial: A Tiny Language Model (TLM) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/10.Transformer/tutorial_tiny_language_model.ipynb) |
+|  | [tutorial_tiny_language_model_ABC.ipynb](Labs/10.Transformer/tutorial_tiny_language_model_ABC.ipynb) | Tutorial: A Tiny Language Model (TLM) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hbprosper/mlinphysics/blob/main/Labs/10.Transformer/tutorial_tiny_language_model_ABC.ipynb) |
+
+
 ## Dependencies
 The notebooks in this repository depend on one or more of several well-known
 well-engineered and free Python modules.
