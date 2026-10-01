@@ -15,8 +15,7 @@ clutter/
 # (events.h5, spiral.h5, test_data.pth) keep working normally.
 Labs/*/data/galaxy10.h5
 Labs/*/data/sdss_stars.csv.gz
-Labs/*/data/5x64x64*.pth
-Labs/*/data/5x64x64*.hdf5
+Labs/*/data/5x64x64*
 
 # Training output written by Config/Monitor. The TLM run is a shipped
 # worked example, so it is re-included.
