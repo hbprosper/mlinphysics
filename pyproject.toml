@@ -15,6 +15,7 @@ dependencies = [
     "drwho @ git+https://github.com/hbprosper/drwho.git@main",
     "h5py",
     "networkx",
+    "scikit-learn",
     "sympy",
     "tqdm",
 ]
