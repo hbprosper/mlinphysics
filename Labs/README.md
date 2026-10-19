@@ -11,3 +11,4 @@
 | 08.NFlow_DModel       | normalization flows and diffusion models |
 | 09.GAE | PyTorch Geometric and graph autoencoders |
 | 10.Transformer | transformers |
+| 11.AgenticAI | AI agents; case study: an AI agent trains an autoencoder on a supercomputer |
