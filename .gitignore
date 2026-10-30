@@ -16,6 +16,7 @@ clutter/
 Labs/*/data/galaxy10.h5
 Labs/*/data/sdss_stars.csv.gz
 Labs/*/data/5x64x64*
+Labs/10.Transformer/data/integrals_large.txt
 
 # Training output written by Config/Monitor. The TLM run is a shipped
 # worked example, so it is re-included.

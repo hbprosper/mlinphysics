@@ -226,9 +226,12 @@ class SequenceData:
             lambda x: len(x) <= max_seq_len, self.sequences))
         
         # ---------------------------------------------------------------
-        # Pad and bracket sequences. 
+        # Bracket sequences with <sos> and <eos>, then pad. The <eos>
+        # token immediately follows the last target token, so that the
+        # model learns to end its output with <eos>:
+        #   <sos> prompt <sep> target <eos> <pad> ... <pad>
         # ---------------------------------------------------------------
-        print('pad sequences and bracket with <sos> and <eos>')
+        print('bracket sequences with <sos> and <eos>, then pad')
         avg_seq_len = 0.0
         std_seq_len = 0.0
         for i, sequence in enumerate(self.sequences): 
@@ -238,7 +241,7 @@ class SequenceData:
             
             padding = (max_seq_len-seq_len)*[PAD] 
             
-            self.sequences[i] = [SOS] + sequence + padding + [EOS]
+            self.sequences[i] = [SOS] + sequence + [EOS] + padding
             
         self.sequences = np.array(self.sequences)
         
@@ -255,9 +258,11 @@ class SequenceData:
         print()
 
     def split(self, sequence):
-        j = list(sequence.flatten()).index(self.SEP)
+        codes  = list(sequence.flatten())
+        j = codes.index(self.SEP)                # position of <sep>
+        k = codes.index(self.EOS, j+1)           # position of <eos>, which ends the target
         prompt = sequence[0, :j+1].view(1, -1)   # Delimited prompt, shape: [1, prompt_len]
-        target = sequence[0, j+1:-1]             # Un-delimited target, shape: [target_len]  
+        target = sequence[0, j+1:k]              # Un-delimited target, shape: [target_len]
         return prompt, target
 
     def str(self, sequence):
@@ -282,14 +287,15 @@ class SequenceData:
         print(sequence)
         print()
 
-        sequence = sequence[1:-1]          # Strip away <sos> and <eos> tokens
+        sequence = list(sequence[1:])        # Strip away the <sos> token
             
-        j = list(sequence).index(self.SEP) # Find index of separator token
+        j = sequence.index(self.SEP)         # Find index of separator token
+        k = sequence.index(self.EOS, j+1)    # Find index of <eos>, which ends the target
         
         prompt = self.str(sequence[:j])
         print('Prompt')
         pprint(prompt)
         
         print('Target')
-        target = self.str(sequence[j+1:])
+        target = self.str(sequence[j+1:k])
         pprint(target)        
