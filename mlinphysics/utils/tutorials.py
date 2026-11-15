@@ -170,14 +170,20 @@ def plot_events(events, targets,
                 fgscale=2.0,
                 xpos_frac=0.14,
                 ypos_frac=0.36,
-                ftsize=14):
-
-    plt.rcParams.update({'font.size': 10})
+                ftsize=18, 
+                fgsize=(5, 5)):
 
     # work out number of columns and number of plots
-    nrows = ndata // ncols
-    ndata = nrows *  ncols
-    fgsize= (fgscale*ncols, fgscale*nrows)
+    if len(events) == 1:
+        plt.rcParams.update({'font.size': ftsize})
+        ndata  = 1
+        nrows  = 1
+        ncols  = 1
+    else:
+        plt.rcParams.update({'font.size': 10})
+        nrows = ndata // ncols
+        ndata = nrows *  ncols
+        fgsize= (fgscale*ncols, fgscale*nrows)
 
     # create an empty figure
     fig = plt.figure(figsize=fgsize)
@@ -551,7 +557,8 @@ class GraphDataset(list):
             assert(length > 0)
 
             # we have a list of possibly inhomogeous arrays
-            indices = torch.randint(start, end-1, size=(random_sample_size,))
+            # note: the upper limit of randint is exclusive, so use end
+            indices = torch.randint(start, end, size=(random_sample_size,))
             x = [data[i] for i in indices]
             if self.has_targets:
                 y = targets[indices]
@@ -590,3 +597,198 @@ class GraphDataset(list):
                      y=torch.Tensor([self.y[i]]).to(device))
             )
         return dataset
+# ================================================================
+# Sparse graphs with a finite "attention domain"   (added Nov 2026)
+# ================================================================
+# The utilities below build graphs in which a particle is connected
+# only to particles within a distance dR_max in (eta, phi) space,
+#
+#     dR_ij = sqrt( (eta_i - eta_j)**2 + dphi(phi_i, phi_j)**2 ) < dR_max,
+#
+# and weight the edges with a normalized Gaussian kernel
+#
+#     e_ij = softmax_j( -alpha * dR_ij**2 ),
+#
+# where the softmax is taken over all source nodes j connected to
+# the target node i. Distances are always computed from the
+# UNSCALED (eta, phi) so that dR has its usual physical meaning
+# and the azimuthal wraparound phi = +pi <-> phi = -pi is handled
+# correctly.
+#
+# Two equivalent implementations are provided:
+#   GaussianAdjacencyMatrix - dense n x n matrix (plain PyTorch)
+#   RadiusConnection +
+#   gaussian_edge_weights   - sparse edge list (PyTorch Geometric)
+# ----------------------------------------------------------------
+def delta_R_matrix(eta, phi):
+    '''
+    Return the matrix of squared distances dR_ij**2 between all
+    pairs of particles, computed with broadcasting.
+
+    eta, phi : tensors of shape [..., n] (UNSCALED values)
+    returns  : tensor of shape [..., n, n]
+    '''
+    deta = eta.unsqueeze(-1) - eta.unsqueeze(-2)   # [..., n, n]
+    dphi = delta_phi(phi.unsqueeze(-1), phi.unsqueeze(-2))
+    return deta**2 + dphi**2
+
+class GaussianAdjacencyMatrix(nn.Module):
+    '''
+    Dense adjacency matrix A of shape (batch, n, n) with elements
+
+        A_ij = softmax_j( -alpha * dR_ij**2 )   if dR_ij < dR_max
+             = 0                                otherwise.
+
+    alpha     : initial value of the (learnable) inverse squared
+                width of the Gaussian. It is kept positive by fitting
+                log(alpha) rather than alpha.
+    dR_max    : radius of the attention domain. None means no cut,
+                that is, a fully-connected graph.
+    scale     : the factors by which (eta, phi) were divided when the
+                data were scaled, e.g., (5, pi). They are used to undo
+                the scaling so that dR is computed in physical units.
+    ieta, iphi: feature indices of eta and phi.
+    '''
+    def __init__(self, alpha=1.0, dR_max=None, scale=(1.0, 1.0),
+                 ieta=1, iphi=2):
+        super().__init__()
+        # nn.Parameter tells PyTorch that log(alpha) is to be fitted
+        self.log_alpha = nn.Parameter(torch.log(torch.tensor([float(alpha)])))
+        self.dR_max = dR_max
+        self.scale  = scale
+        self.ieta, self.iphi = ieta, iphi
+
+    def alpha(self):
+        return torch.exp(self.log_alpha)
+
+    def forward(self, x):
+        # x: tensor of shape (batch size, number of particles, features)
+
+        # 1. undo the scaling of eta and phi
+        eta = x[..., self.ieta] * self.scale[0]
+        phi = x[..., self.iphi] * self.scale[1]
+
+        # 2. squared distances between all pairs of particles
+        dR2 = delta_R_matrix(eta, phi)           # (batch, n, n)
+
+        # 3. logits of the Gaussian kernel
+        logits = -self.alpha() * dR2
+
+        # 4. particles outside the attention domain get logit -infinity,
+        #    which the softmax turns into an exact zero. (The diagonal,
+        #    dR = 0, is always inside, so no row is entirely -infinity.)
+        if self.dR_max is not None:
+            logits = logits.masked_fill(dR2 >= self.dR_max**2,
+                                        float('-inf'))
+
+        # 5. normalize each row (target node) with a softmax
+        return torch.softmax(logits, dim=-1)
+
+class RadiusConnection(nn.Module):
+    '''
+    Sparse analog of GaussianAdjacencyMatrix's cut: connect target
+    node i to source node j only if dR_ij < dR_max. Each node is
+    connected to itself (dR_ii = 0).
+
+    Given pos[n, 2] = UNSCALED (eta, phi) of the n particles, return
+    edge_index[2, K], where K is the number of connected pairs and
+
+        edge_index[0] - target node indices i
+        edge_index[1] - source node indices j
+
+    Note: to find the pairs we compute all n**2 distances of ONE
+    graph, but we keep only the K pairs inside the attention domain.
+    It is the storage of the edges of ALL graphs that must be sparse.
+    '''
+    def __init__(self, dR_max=0.8):
+        super().__init__()
+        self.dR_max = dR_max
+
+    def forward(self, pos):
+        dR2 = delta_R_matrix(pos[:, 0], pos[:, 1])   # [n, n]
+        # nonzero() returns the (row, column) = (target, source)
+        # indices of the True elements as a tensor of shape [K, 2];
+        # transpose it to get PyG's shape [2, K]
+        return (dR2 < self.dR_max**2).nonzero().T.contiguous()
+
+def gaussian_edge_weights(pos, edge_index, alpha, num_nodes=None):
+    '''
+    Sparse analog of GaussianAdjacencyMatrix: compute one weight per
+    edge (i, j),
+
+        e_ij = softmax_j( -alpha * dR_ij**2 ),
+
+    where the softmax runs over all edges that share the same target
+    node i.
+
+    pos        : tensor[n, 2]  UNSCALED (eta, phi) of every node
+    edge_index : tensor[2, K]  (target, source) node indices
+    alpha      : positive tensor or float
+    returns    : tensor[K]
+    '''
+    if not PYG_IS_AVAILABLE:
+        raise ModuleNotFoundError(PYG_WARN())
+
+    trg_nodes, src_nodes = edge_index
+
+    # 1. squared distance for every edge
+    deta = pos[trg_nodes, 0] - pos[src_nodes, 0]
+    dphi = delta_phi(pos[trg_nodes, 1], pos[src_nodes, 1])
+    dR2  = deta**2 + dphi**2
+
+    # 2. softmax of -alpha * dR**2 over the edges of each target node
+    return softmax(-alpha * dR2, trg_nodes, num_nodes=num_nodes)
+
+class SparseGraphDataset(torch.utils.data.Dataset):
+    '''
+    A dataset of PyG graphs whose edges are built "lazily", that is,
+    only when a graph is requested (by the DataLoader). This avoids
+    storing the edges of every graph in memory: for a fully-connected
+    graph of n nodes, the edge_index alone occupies 16 n**2 bytes,
+    which for our 36,000 events amounts to about 14 GB!
+
+    data   : list[np.array] of SCALED node features, one per event
+    pos    : list[np.array] of UNSCALED (eta, phi), one per event
+    targets: np.array of targets
+    start, end         : range of events to use
+    random_sample_size : if specified, a random sample of this size
+                         is drawn from the range (start, end)
+    connection         : function that maps pos[n, 2] to edge_index
+                         [default: RadiusConnection(dR_max=0.8)]
+    '''
+    def __init__(self, data, pos, targets, start, end,
+                 random_sample_size=None,
+                 connection=RadiusConnection(0.8),
+                 verbose=1):
+
+        if not PYG_IS_AVAILABLE:
+            raise ModuleNotFoundError(PYG_WARN())
+
+        super().__init__()
+
+        if random_sample_size is None:
+            indices = range(start, end)
+        else:
+            indices = torch.randint(start, end,
+                                    size=(random_sample_size,)).tolist()
+
+        # cache node features, positions and targets as tensors
+        self.x   = [torch.tensor(data[i], dtype=torch.float32) for i in indices]
+        self.pos = [torch.tensor(pos[i],  dtype=torch.float32) for i in indices]
+        self.y   = torch.tensor(np.asarray(targets)[list(indices)],
+                                dtype=torch.float32)
+
+        self.connection = connection
+
+        if verbose:
+            print(f'SparseGraphDataset: {len(self):d} graphs')
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, i):
+        # build graph i on demand
+        return Data(x=self.x[i],
+                    pos=self.pos[i],
+                    edge_index=self.connection(self.pos[i]),
+                    y=self.y[i:i+1])
