@@ -11,6 +11,8 @@ import numpy as np
 # standard module for high-quality plots
 import matplotlib as mp
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+from matplotlib.patches import Rectangle
 
 # module to access data in 
 # Hierarchical Data Format (HDF or H5 format)
@@ -163,7 +165,7 @@ def load_events(filename, pTcut=0.5, which=0):
 # ----------------------------------------------------------------
 def plot_events(events, targets, 
                 ndata=9, ptscale=25, scale=80,
-                xmin=-6.0, xmax=6.0,
+                xmin=-4.0, xmax=4.0,
                 ymin=-4.0, ymax=4.0,
                 filename='events.png',
                 ncols=3,
@@ -171,7 +173,7 @@ def plot_events(events, targets,
                 xpos_frac=0.14,
                 ypos_frac=0.36,
                 ftsize=18, 
-                fgsize=(5, 5)):
+                fgsize=(5, 5), dR_max=None):
 
     # work out number of columns and number of plots
     if len(events) == 1:
@@ -210,7 +212,7 @@ def plot_events(events, targets,
 
         size = scale * np.sqrt(pt / ptscale)
         cmap = mp.colormaps['rainbow']
-        colors = cmap(size / size.max(), alpha=0.4)
+        colors = cmap(size / size.max(), alpha=0.5)
 
         ax.scatter(eta, phi, s=size, c=colors)
 
@@ -219,41 +221,97 @@ def plot_events(events, targets,
         
         ax.text(xpos, ypos, f'$y = {y:d}$', fontsize=12)
 
+        if len(events) == 1 and dR_max is not None:
+            candidates = np.where(np.abs(phi) < 2.2)[0]
+            k = candidates[np.argmax(pt[candidates])]      # the target particle
+            
+            t = np.linspace(0, 2*np.pi, 300)
+            ax.plot(eta[k] + dR_max*np.cos(t), phi[k] + dR_max*np.sin(t), color='black', lw=2)
+            ax.annotate(rf'$\Delta R_\mathrm{{max}}={dR_max}$',
+                        (eta[k] + 0.71*dR_max, phi[k] + 0.71*dR_max),
+                        xytext=(eta[k] + 1.3, phi[k] + 0.5), color='black', fontsize=15,
+                        arrowprops=dict(arrowstyle='->', color='black'))
+
+    
     fig.tight_layout()
     plt.savefig(filename)
 
-def plot_graphs(loader, 
+def plot_adjacency_matrix(A, 
+                   filename='adjacency_matrix.png',
+                   fgsize=(6, 6),
+                   ftsize=18,
+                   figdir='figures', 
+                   dpi=200):
+
+    plt.rcParams.update({'font.size': ftsize})
+    
+    fig, ax = plt.subplots(figsize=fgsize)
+
+    # fraction of matrix elements that are zero
+    zero_fraction = (A == 0).mean()
+
+    Am   = np.ma.masked_where(A == 0, A)   # masked elements are drawn white
+    cmap = plt.get_cmap('Blues').copy()
+    cmap.set_bad('white')
+    
+    im = ax.imshow(Am, cmap=cmap, interpolation='nearest',
+                   norm=LogNorm(vmin=Am.min(), vmax=Am.max()))
+    
+    ax.set_xlabel(fr'particles sorted by $\phi$')
+    ax.set_ylabel(fr'particles sorted by $\phi$')
+    ax.set_title(rf'$A$: {100*zero_fraction:.0f}\% of the matrix elements are zero',
+                 fontsize=14, color='black')
+    cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cb.set_label('$A_{ij}$')
+    
+    fig.tight_layout()
+    #os.makedirs(figdir, exist_ok=True)
+    fig.savefig(filename)
+    plt.show()
+
+def plot_graphs(V, Y, 
                 ndata=9, ptscale=25, scale=8,
                 ncols=3,
                 fgscale=2.5,
                 filename='events_as_graphs.png',
-                ftsize=14):
+                dR_max=0.8,
+                ftsize=14, 
+                fgsize=(5, 5), 
+                layout='kamada_kawai'):
 
+    layouts = ['circular', 'kamada_kawai', 'spiral', 'spring', 'shell']
+       
     plt.rcParams.update({'font.size': 14})
 
     # work out number of columns and number of plots
-    nrows = ndata // ncols
-    ndata = nrows *  ncols
-    fgsize= (fgscale*ncols, fgscale*nrows)
+    if len(V) < 2:
+        plt.rcParams.update({'font.size': ftsize})
+        ndata = 1
+        nrows = 1
+        ncols = 1
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=fgsize)
+        axs = [axs]
+    else:
+        plt.rcParams.update({'font.size': 10})
+        nrows = ndata // ncols
+        ndata = nrows *  ncols
+        fgsize= (fgscale*ncols, fgscale*nrows)
 
-    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=fgsize)
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=fgsize)
+        axs = axs.flatten()
     
-    axs = axs.flatten()
-    
-    gedge = IceCubeAdjacencyMatrix()
+    gedges  = GaussianAdjacencyMatrix(alpha=1.0, dR_max=dR_max) 
     
     # loop over number of point clouds, ndata
-    for i, (event, y) in enumerate(loader):
+    for i, (event, y) in enumerate(zip(V, Y)):
         if i > ndata-1: break
 
         ax = axs[i]
         
         # get point cloud (i.e., event).
         # area of points in (eta, phi) proportional to pT of particle
-        pt, eta, phi = event[0,:,:].detach().numpy().T[:]            
-        y = y.detach().numpy()[0]
-        evt = event.squeeze().view(-1,len(pt), 3)
-        A   = gedge(evt).squeeze()
+        pt = event[:, 0].detach().cpu().numpy()           
+        A  = gedges(event.unsqueeze(dim=0)).squeeze()
 
         ax.set_xlabel(f'$y = {int(y):d}$ - count: {len(pt):5d}')
       
@@ -270,15 +328,20 @@ def plot_graphs(loader,
             for k in range(len(pt)):
                 if k == j: continue
                 w = float(A[j, k].detach())
-                n += 1
                 if n < 500:
-                    G.add_edge(j, k, weight=w)
-                    widths.append(10*w)
+                    if w > 0:
+                        n += 1
+                        G.add_edge(j, k, weight=w)
+                        widths.append(10*w)
                     
         widths = np.array(widths)
 
         # Position nodes
-        pos = nx.spring_layout(G, seed=42)
+        if layout in layouts:
+            print('graph layout', layout)
+            pos = eval(f'nx.{layout}_layout(G)')
+        else:
+            pos = nx.planar_layout(G)
 
         # Draw the graph
         nodes = nx.draw_networkx_nodes(G, pos, 
